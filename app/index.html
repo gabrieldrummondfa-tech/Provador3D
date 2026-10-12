@@ -1,0 +1,1185 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#121315"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>Provador 3D</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head><body>
+<style>
+/* Layout: estúdio escuro — viewport 3D à esquerda (topo no celular), painel de ajustes à direita (embaixo no celular) */
+:root{
+  --studio:#121315; --panel:#1a1b1e; --raise:#24262a; --line:#2f3237;
+  --ink:#ece9e4; --muted:#9a978f; --tape:#e8c35a; --tape-ink:#1b1708;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--studio);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100%}
+.stage{position:relative;min-width:0;background:radial-gradient(120% 90% at 50% 35%,#2a2b2f 0%,#17181a 55%,#0d0e0f 100%)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.brand{position:absolute;left:16px;top:14px;display:flex;align-items:baseline;gap:10px;pointer-events:none}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;margin:0}
+.brand span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tape{position:absolute;left:16px;right:16px;bottom:14px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+.tape div{background:var(--tape);color:var(--tape-ink);font-family:var(--f-mono);font-size:12px;padding:4px 8px 4px 8px;border-radius:2px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.28) 0 1px,transparent 1px 6px);background-size:100% 4px;background-repeat:no-repeat;background-position:0 0}
+.tape b{font-weight:500;font-variant-numeric:tabular-nums}
+.tape small{opacity:.7;margin-right:4px;text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.views{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.views button{font:500 12px var(--f-body);background:rgba(26,27,30,.8);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;backdrop-filter:blur(6px)}
+.views button:hover{border-color:var(--muted)}
+.frame{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);aspect-ratio:832/1216;max-width:100%;box-shadow:0 0 0 9999px rgba(0,0,0,.45);outline:1px solid var(--tape);pointer-events:none}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.thumbs figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.thumbs img{width:100%;aspect-ratio:832/1216;object-fit:cover;background:var(--raise);border-radius:4px;border:1px solid var(--line)}
+.thumbs figcaption{font-size:11px;color:var(--muted)}
+ol.steps{margin:6px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}
+ol.steps code{font-family:var(--f-mono);font-size:11.5px;background:var(--raise);padding:1px 4px;border-radius:3px;word-break:break-all}
+.srv{display:flex;flex-direction:column;gap:8px;padding:12px;margin:12px 0 4px;border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:6px;background:var(--raise);font-size:13px;line-height:1.45}
+.srv.ok{border-left-color:#5fb37a}.srv.warn{border-left-color:var(--tape)}.srv.bad{border-left-color:#d0614f}
+.srv p{margin:0}.srv label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.srv select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px;font:13px var(--f-body);max-width:100%}
+.srv code,.note code{font-family:var(--f-mono);font-size:11.5px;background:var(--panel);padding:1px 4px;border-radius:3px;word-break:break-all}
+.srv .btn{align-self:flex-start}
+.gen{display:flex;flex-direction:column;gap:10px;padding:16px 0 6px}
+.btn.big{background:var(--tape);color:var(--tape-ink);border-color:var(--tape);font-size:15px;padding:12px 16px;font-weight:600}
+.btn.big:disabled{opacity:.6}
+.prog{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.track{height:6px;background:var(--raise);border-radius:3px;overflow:hidden}.fill{height:100%;width:0;background:var(--tape);transition:width .3s}
+.gal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
+.gi{padding:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;cursor:pointer;background:var(--raise);aspect-ratio:832/1216}
+.gi img{width:100%;height:100%;object-fit:cover;display:block}.gi.gone{display:none}
+.lb{position:fixed;inset:0;z-index:20;background:rgba(8,8,9,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.lb img{max-width:100%;min-height:0;flex:1;object-fit:contain}
+.lbbar{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font:12px var(--f-mono)}
+.lbbtns{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+a.btn{text-decoration:none;display:inline-block}
+.loading{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+
+.panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.bar{display:flex;flex-wrap:wrap;gap:6px;padding:14px 16px 10px}
+.btn{font:500 13px var(--f-body);background:var(--raise);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.on{background:var(--tape);color:var(--tape-ink);border-color:var(--tape)}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,.sw:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+.tabs{display:flex;gap:4px;padding:0 16px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font:600 13px var(--f-body);background:none;border:0;color:var(--muted);padding:10px 8px 11px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--tape)}
+.list{flex:1;min-height:0;overflow-y:auto;padding:6px 16px 24px;display:flex;flex-direction:column;gap:2px}
+.row{padding:9px 0 8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.row label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;margin-bottom:7px}
+.row output{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.row .hint{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-top:3px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--trk,var(--raise))}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--trk,var(--raise))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--ink);border:3px solid var(--panel);margin-top:-7px;box-shadow:0 0 0 1px var(--line)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:3px solid var(--panel)}
+.sect{font:500 11px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw.on{border-color:var(--tape);box-shadow:0 0 0 2px var(--panel) inset}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin:8px 0}
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.slot{display:flex;flex-direction:column;gap:4px}
+.slot small{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-align:center}
+textarea{width:100%;box-sizing:border-box;min-height:70px;background:var(--raise);color:var(--ink);border:1px solid var(--line);border-radius:6px;font:12px var(--f-mono);padding:8px;resize:vertical}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tape);color:var(--tape-ink);font:500 13px var(--f-body);padding:8px 14px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.warn{color:var(--tape)}
+
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:54% 46%}
+  .panel{border-left:0;border-top:1px solid var(--line)}
+  .bar{padding:10px 16px 8px}
+  .btn{padding:6px 9px;font-size:12px}
+  .brand span{display:none}
+  .tape div{font-size:11px;padding:3px 6px}
+}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<div class="app">
+  <section class="stage" id="stage" aria-label="Visualização 3D do personagem">
+    <div class="loading" id="loading">carregando malha e 100 alvos de forma…</div>
+    <div class="brand"><h1>Provador 3D</h1><span>editor + gerador</span></div>
+    <div class="views" role="group" aria-label="Enquadramento">
+      <button data-view="body">Corpo</button>
+      <button data-view="torso">Tronco</button>
+      <button data-view="face">Rosto</button>
+      <button data-view="back">Costas</button>
+    </div>
+    <div class="frame" id="photoFrame" hidden></div>
+    <div class="tape" id="tape" aria-live="polite"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="bar">
+      <button class="btn" id="pRand">Aleatório</button>
+      <button class="btn" id="pReset">Voltar ao padrão</button>
+      <button class="btn" id="pExtreme" aria-pressed="false">Modo extremo</button>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="list" id="list"></div>
+  </aside>
+</div>
+<div class="lb" id="lb" hidden role="dialog" aria-label="Foto gerada">
+  <img id="lbImg" alt="Foto gerada">
+  <div class="lbbar"><span id="lbInfo"></span>
+    <div class="lbbtns"><button class="btn" id="lbPrev">Anterior</button><button class="btn" id="lbNext">Próxima</button><a class="btn" id="lbDl" href="#">Baixar</a><button class="btn" id="lbAgain">Gerar outra</button><button class="btn on" id="lbClose">Fechar</button></div></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+
+<script type="importmap">
+{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = id => document.getElementById(id);
+const toastEl = $('toast'); let toastT;
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>toastEl.classList.remove('show'), 1800); }
+
+/* ---------- dados ---------- */
+const META = await fetch('meta.json', { cache:'no-cache' }).then(r=>r.json());
+async function loadPack(){
+  const r = await fetch('data.pack');
+  return await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+const BUF = await loadPack();
+const M = META.mesh;
+const NV = M.nv;
+const BASE = new Float32Array(BUF, M.pos, NV*3);
+const INDEX = new Uint32Array(BUF, M.idx, M.nt*3);
+const GRP = new Uint8Array(BUF, M.grp, NV);
+const T = {};
+for (const t of META.targets) T[t.n] = { idx:new Uint16Array(BUF, t.i, t.c), d:new Int16Array(BUF, t.d, t.c*3), s:t.s };
+
+/* ---------- estado ---------- */
+const MACRO_DEF = { gender:0, weight:.45, muscle:.4, height:.5, prop:.7, cup:.6, firm:.55 };
+const PAIRS = ['bust','brpos','brdist','brpoint','brvert','shoulder','pec','dorsi','vshape','torsow','waist','belly','neck',
+  'hipw','hips','glute','uarm','uarmfat','uarmmus','larm','armlen','thigh','thighfat','thighmus','calf','leglen',
+  'faceshape','cheekb','jaw','chinw','nose','nosew','nosetip','lips','mouthw','eyesz','brow'];
+const PAIR_DEF = { waist:-0.2, hips:0.15, glute:0.15, shoulder:-0.15, neck:-0.15, faceshape:0.45, jaw:-0.3, chinw:-0.25, nose:-0.25, nosew:-0.2, nosetip:0.15, lips:0.35, eyesz:0.15, cheekb:0.2, uarmmus:-0.2 };
+const SKINS = ['#f3d2c1','#e8b896','#c98e6a','#a86d4b','#7a4a31','#4e2f20'];
+const HAIRS = ['#16110e','#3b2416','#6b4423','#a77a45','#c9a46b','#8a3a1a','#8a8a88'];
+const CLOTH = ['#1d1f24','#ece6dc','#7a2836','#c98b94','#2e4a6b','#3d5a45','#cdb595'];
+const IRIS = ['#5a3a22','#7a5a2a','#4f6b3a','#4d6f8f','#6b6f73'];
+const LIPS = ['#b5676a','#a23a45','#c4707a','#8a4a42','#d08a7e'];
+const OUTFITS = ['Conjunto','Maiô','Top e short','Cropped e jeans'];
+let S = freshState();
+function freshState(){ const s = { m:{...MACRO_DEF}, p:{}, skin:1, hair:2, cloth:2, eye:0, lip:0, makeup:0.6, hairLen:0.75, outfit:0, ear:1, freckles:0, armOpen:0.22, legOpen:0.2, pose:1, age:1 }; for (const k of PAIRS) s.p[k]=PAIR_DEF[k]||0; return s; }
+let extreme = false;
+
+/* ---------- pesos dos alvos (modelo macro do MakeHuman) ---------- */
+function tri(v){ return { min:Math.max(0,(.5-v)*2), average:1-Math.abs(v-.5)*2, max:Math.max(0,(v-.5)*2) }; }
+function weights(){
+  const W = new Map(); const add=(n,w)=>{ if (T[n] && Math.abs(w)>1e-4) W.set(n,(W.get(n)||0)+w); };
+  const m = S.m; const g = { f:1-m.gender, m:m.gender };
+  const mw = tri(m.muscle), ww = tri(m.weight);
+  for (const gk of ['f','m']){
+    const gw = g[gk]; if (gw<=0) continue;
+    add('eth-'+gk, gw);
+    for (const a of ['min','average','max']) for (const b of ['min','average','max']) add(`uni-${gk}-${a}-${b}`, gw*mw[a]*ww[b]);
+    add(`h-${gk}-min`, gw*Math.max(0,(.5-m.height)*2)); add(`h-${gk}-max`, gw*Math.max(0,(m.height-.5)*2));
+    add(`p-${gk}-ideal`, gw*Math.max(0,(m.prop-.5)*2)); add(`p-${gk}-uncommon`, gw*Math.max(0,(.5-m.prop)*2));
+  }
+  const cw = tri(m.cup), fw = tri(m.firm);
+  for (const w of ['min','average','max']) for (const c of ['min','average','max']) for (const f of ['min','average','max']){
+    if (c==='average' && f==='average') continue;
+    add(`br-${w}-${c}-${f}`, g.f*ww[w]*cw[c]*fw[f]);
+  }
+  add('nip-flat', 1.0);
+  for (const k of PAIRS){ const v=S.p[k]; if (v<0) add(k+'-', -v); else if (v>0) add(k+'+', v); }
+  return W;
+}
+
+/* ---------- cena ---------- */
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.32;
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+camera.position.set(0.5, 1.05, 4.3);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.95, 0); controls.enableDamping = true; controls.minDistance = 0.45; controls.maxDistance = 9;
+controls.maxPolarAngle = Math.PI*0.53;
+
+const key = new THREE.DirectionalLight(0xfff1e4, 2.6); key.position.set(-2.2, 3.6, 3.2);
+key.castShadow = true; key.shadow.mapSize.set(2048,2048); key.shadow.radius = 6; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+Object.assign(key.shadow.camera, { left:-1.4, right:1.4, top:2.3, bottom:-0.2, near:0.5, far:12 });
+const fill = new THREE.DirectionalLight(0xc8d6ff, 0.65); fill.position.set(3, 1.6, 2.4);
+const rim = new THREE.DirectionalLight(0xffffff, 1.7); rim.position.set(1.2, 2.8, -3.2);
+const rim2 = new THREE.DirectionalLight(0xffe2cc, 0.9); rim2.position.set(-2.4, 1.2, -2.6);
+scene.add(key, fill, rim, rim2, new THREE.HemisphereLight(0xdfe6ff, 0x2a2420, 0.25));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity:0.42 }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const disc = new THREE.Mesh(new THREE.RingGeometry(0.62,0.64,96), new THREE.MeshBasicMaterial({ color:0xe8c35a, transparent:true, opacity:0.18 }));
+disc.rotation.x = -Math.PI/2; disc.position.y = 0.001; scene.add(disc);
+
+/* ---------- geometria compartilhada ---------- */
+const pos = new Float32Array(BASE);
+// subdivisão de Loop pré-calculada como operador linear esparso: suaviza a silhueta da malha base (13 mil vértices → 55 mil)
+const LOOP = (()=>{
+  const nv=NV, nt=M.nt, idx=INDEX, edgeMap=new Map(), E=[];
+  const triE=new Uint32Array(nt*3);
+  for (let t=0;t<nt;t++) for (let e=0;e<3;e++){
+    const a=idx[t*3+e], b=idx[t*3+(e+1)%3], c=idx[t*3+(e+2)%3]; const key=a<b?a*nv+b:b*nv+a;
+    let id=edgeMap.get(key); if (id===undefined){ id=E.length/4; edgeMap.set(key,id); E.push(a,b,c,-1); } else E[id*4+3]=c;
+    triE[t*3+e]=id; }
+  const ne=E.length/4, nbr=Array.from({length:nv},()=>[]), bnb=Array.from({length:nv},()=>[]);
+  for (let e=0;e<ne;e++){ const a=E[e*4],b=E[e*4+1]; nbr[a].push(b); nbr[b].push(a); if (E[e*4+3]<0){ bnb[a].push(b); bnb[b].push(a); } }
+  const start=[0], cols=[], ws=[];
+  for (let v=0;v<nv;v++){
+    if (bnb[v].length===2){ cols.push(v,bnb[v][0],bnb[v][1]); ws.push(0.75,0.125,0.125); }
+    else if (bnb[v].length>0 || nbr[v].length<3){ cols.push(v); ws.push(1); }
+    else { const n=nbr[v].length, beta=n===3?3/16:3/(8*n); cols.push(v); ws.push(1-n*beta); for (const u of nbr[v]){ cols.push(u); ws.push(beta); } }
+    start.push(cols.length); }
+  for (let e=0;e<ne;e++){ const a=E[e*4],b=E[e*4+1],c=E[e*4+2],d=E[e*4+3];
+    if (d<0){ cols.push(a,b); ws.push(.5,.5); } else { cols.push(a,b,c,d); ws.push(.375,.375,.125,.125); } start.push(cols.length); }
+  const sidx=new Uint32Array(nt*12);
+  for (let t=0;t<nt;t++){ const a=idx[t*3],b=idx[t*3+1],c=idx[t*3+2], m0=nv+triE[t*3], m1=nv+triE[t*3+1], m2=nv+triE[t*3+2];
+    sidx.set([a,m0,m2, m0,b,m1, m2,m1,c, m0,m1,m2], t*12); }
+  const grp=new Uint8Array(nv+ne); grp.set(GRP); for (let e=0;e<ne;e++) grp[nv+e]=GRP[E[e*4]];
+  return { n:nv+ne, start:Int32Array.from(start), cols:Int32Array.from(cols), ws:Float32Array.from(ws), idx:sidx, grp };
+})();
+function subdivide(src, dst){ const {start,cols,ws}=LOOP; for (let r=0;r<LOOP.n;r++){ let x=0,y=0,z=0; for (let k=start[r];k<start[r+1];k++){ const c=cols[k]*3, w=ws[k]; x+=src[c]*w; y+=src[c+1]*w; z+=src[c+2]*w; } dst[r*3]=x; dst[r*3+1]=y; dst[r*3+2]=z; } }
+const spos = new Float32Array(LOOP.n*3);
+const sbase = new Float32Array(LOOP.n*3); subdivide(BASE, sbase);
+const posAttr = new THREE.BufferAttribute(spos, 3); posAttr.setUsage(THREE.DynamicDrawUsage);
+const baseAttr = new THREE.BufferAttribute(sbase, 3);
+const bodyGeo = new THREE.BufferGeometry();
+bodyGeo.setAttribute('position', posAttr); bodyGeo.setAttribute('aBase', baseAttr);
+bodyGeo.setIndex(new THREE.BufferAttribute(LOOP.idx, 1));
+const normAttr = new THREE.BufferAttribute(new Float32Array(LOOP.n*3), 3); bodyGeo.setAttribute('normal', normAttr);
+// grupos contíguos: 0 corpo, 1 olho esq, 2 olho dir, 3 cílios
+{ const SG=LOOP.grp, SI=LOOP.idx, nt=SI.length/3; let start=0, cur=SG[SI[0]];
+  for (let t=1;t<=nt;t++){ const g = t<nt ? SG[SI[t*3]] : -1; if (g!==cur){ bodyGeo.addGroup(start*3,(t-start)*3,cur); start=t; cur=g; } } }
+
+// máscaras por região, calculadas na pose base (unidade = decímetro)
+const bx=i=>BASE[i*3], by=i=>BASE[i*3+1], bz=i=>BASE[i*3+2];
+function armCut(y){ return y>4.4?1.95 : y>4.0?1.7 : y>2.8?1.9 : 2.3; }
+const isTorso = new Uint8Array(NV);
+for (let i=0;i<NV;i++) isTorso[i] = (GRP[i]===0 && Math.abs(bx(i))<armCut(by(i)) && by(i)>-1.6 && by(i)<5.0) ? 1:0;
+function lerpTable(z, xs, ys){ if (z<=xs[0]) return ys[0]; for (let k=1;k<xs.length;k++) if (z<=xs[k]){ const t=(z-xs[k-1])/(xs[k]-xs[k-1]); return ys[k-1]+(ys[k]-ys[k-1])*t; } return ys[ys.length-1]; }
+/* ---------- materiais ---------- */
+const NOISE = `
+float h3(vec3 p){ p=fract(p*0.3183099+.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+float vn(vec3 x){ vec3 i=floor(x); vec3 f=fract(x); f=f*f*(3.0-2.0*f);
+ return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float fbm(vec3 p){ float a=.5,s=0.; for(int i=0;i<4;i++){ s+=a*vn(p); p*=2.03; a*=.5; } return s; }
+vec3 perturbN(vec3 sp, vec3 sn, vec2 dH, float fd){
+  vec3 sx=normalize(dFdx(sp)), sy=normalize(dFdy(sp)); vec3 r1=cross(sy,sn), r2=cross(sn,sx);
+  float det=dot(sx,r1)*fd; vec3 grad=sign(det)*(dH.x*r1+dH.y*r2); return normalize(abs(det)*sn-grad); }
+`;
+function patch(mat, {vert='', fragHead='', color='', normal='', lights='', rough='', physical='', uniforms={}}){
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, uniforms);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 aBase; varying vec3 vBase; uniform float uOffset;\n' + (vert.head||''))
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBase = aBase; transformed += objectNormal * uOffset;\n' + (vert.body||''));
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBase;\n' + NOISE + fragHead)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + color)
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + normal)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n' + rough)
+      .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\n' + physical)
+      .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + lights);
+  };
+  return mat;
+}
+const skinU = { uOffset:{value:0}, uHair:{value:new THREE.Color(HAIRS[1])}, uCloth:{value:new THREE.Color(CLOTH[0])}, uOutfit:{value:0},
+  uMakeup:{value:0.6}, uLip:{value:new THREE.Color(LIPS[0])}, uFreckles:{value:0},
+  uSSS:{value:new THREE.Vector3(0.6,0.16,0.09)}, uPore:{value:0.45} };
+const MASKS = `
+float tbl4(float z, vec4 xs, vec4 ys){ float y=ys.x; y=mix(y,ys.y,smoothstep(xs.x,xs.y,z)); y=mix(y,ys.z,smoothstep(xs.y,xs.z,z)); y=mix(y,ys.w,smoothstep(xs.z,xs.w,z)); return y; }
+float edge(float d, float w){ return smoothstep(-w, w, d); }
+float clothMask(vec3 p, float aa){
+  gDen = 0.0;
+  float x=abs(p.x), y=p.y, z=p.z;
+  float back = smoothstep(0.35,0.0,z);
+  float leg = mix(-1.02+0.92*x, -1.32+0.62*x, back);
+  float top = tbl4(z, vec4(-0.6,0.3,0.7,1.2), vec4(3.25,3.35,4.25,4.45));
+  float topHi = tbl4(z, vec4(-0.6,0.3,0.7,1.2), vec4(3.9,3.95,4.5,4.6));
+  float strap = edge(y-2.42,aa) * edge(5.25-y,aa) * edge(x-0.72,aa) * edge(0.98-x,aa);
+  if (uOutfit < 0.5){
+    float bottom = edge(0.60-y,aa) * edge(y-leg,aa) * edge(2.1-x,aa);
+    float band = edge(y-2.42,aa) * edge(top-y,aa) * edge(1.62-x,aa);
+    float scallop = 0.014*sin(atan(p.z-0.3,p.x)*44.0)*smoothstep(0.2,0.6,z);
+    float lace = edge(y-(2.42+scallop),aa);
+    return max(bottom, max(band*lace, strap));
+  } else if (uOutfit < 1.5){
+    float xc = y>2.42 ? 1.62 : 2.1;
+    float suit = edge(y-leg,aa) * edge(top-y,aa) * edge(xc-x,aa);
+    float strapW = edge(y-2.42,aa) * edge(5.3-y,aa) * edge(x-0.62,aa) * edge(1.0-x,aa);
+    return max(suit, strapW);
+  } else if (uOutfit > 2.5){
+    float neck = mix(5.42, 5.0 + 0.34*smoothstep(0.12,0.7,x), smoothstep(0.2,0.9,z));
+    float tee = edge(y-2.5,aa) * edge(neck-y,aa) * max(edge(1.62-x,aa), edge(2.32-x,aa)*edge(y-3.95,aa));
+    float jeans = edge(1.05-y,aa) * edge(y-(-1.85+0.1*x),aa) * edge(2.15-x,aa);
+    gDen = jeans;
+    return max(tee, jeans);
+  } else {
+    float shorts = edge(0.62-y,aa) * edge(y-(-2.35+0.15*x),aa) * edge(2.15-x,aa);
+    float sport = edge(y-2.05,aa) * edge(topHi-y,aa) * edge(1.64-x,aa);
+    float strapS = edge(y-2.05,aa) * edge(5.3-y,aa) * edge(x-0.55,aa) * edge(1.0-x,aa);
+    return max(shorts, max(sport, strapS));
+  }
+}
+float hairMask(vec3 p, float aa){
+  float yh = tbl4(p.z, vec4(0.0,0.45,0.85,1.3), vec4(6.95,7.62,7.92,7.92));
+  yh = mix(6.80, yh, smoothstep(-0.9,0.0,p.z));
+  float n = vn(p*vec3(18.0,6.0,18.0));
+  return smoothstep(-0.05,0.05, p.y - yh + (n-0.5)*0.06) * step(6.5,p.y);
+}
+`;
+const skinMat = patch(new THREE.MeshPhysicalMaterial({
+  color:SKINS[1], roughness:0.5, specularIntensity:0.55, clearcoat:0.05, clearcoatRoughness:0.35,
+  sheen:0.35, sheenRoughness:0.55, sheenColor:new THREE.Color(0.95,0.55,0.45) }), {
+  uniforms:skinU,
+  fragHead:'uniform vec3 uHair; uniform vec3 uCloth; uniform float uOutfit; uniform float uMakeup; uniform vec3 uLip; uniform float uFreckles; uniform vec3 uSSS; uniform float uPore;\nfloat gCloth, gHair, gLips, gDen;\n' + MASKS,
+  color:`
+    float aa = max(length(fwidth(vBase))*0.8, 0.004);
+    gCloth = clothMask(vBase, aa);
+    gHair = hairMask(vBase, aa) * (1.0 - gCloth);
+    float blot = fbm(vBase*0.85);
+    diffuseColor.rgb *= mix(0.9,1.06,blot);
+    float ax = abs(vBase.x);
+    vec2 ck = (vec2(ax,vBase.y)-vec2(0.52,7.02))*vec2(3.2,3.4);
+    float cheek = exp(-dot(ck,ck)) * smoothstep(0.8,1.1,vBase.z);
+    diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0,0.82,0.82), cheek*(0.45+0.45*uMakeup));
+    float red = smoothstep(0.6,0.2,fbm(vBase*2.3+3.0))*0.12;
+    diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0,0.86,0.84), red);
+    float lipD = length((vBase.xy-vec2(0.0,6.615))*vec2(1.0,2.3));
+    float lips = smoothstep(0.24,0.17,lipD) * smoothstep(1.40,1.48,vBase.z);
+    gLips = lips;
+    vec3 lipBase = diffuseColor.rgb*vec3(0.80,0.52,0.52);
+    diffuseColor.rgb = mix(diffuseColor.rgb, mix(lipBase, uLip, 0.35+0.6*uMakeup), lips*0.88);
+    { vec2 e = vec2(ax-0.312, vBase.y-7.29) / vec2(0.175, 0.085);
+      float r = length(e); float upper = smoothstep(-0.25,0.15,e.y);
+      float front = smoothstep(1.2,1.3,vBase.z);
+      float liner = smoothstep(0.14,0.02,abs(r-1.02)) * upper * front;
+      float wing = smoothstep(0.05,0.0,abs((vBase.y-7.30)-(ax-0.47)*0.35)) * smoothstep(0.44,0.48,ax)*smoothstep(0.58,0.52,ax) * front;
+      float shadow = smoothstep(1.05,1.25,r)*smoothstep(2.1,1.3,r) * smoothstep(0.0,0.4,e.y) * front;
+      diffuseColor.rgb *= mix(vec3(1.0), vec3(0.78,0.66,0.66), shadow*0.55*uMakeup);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.04,0.03,0.03), clamp(liner*0.45+(liner+wing)*0.5*uMakeup,0.0,0.9)); }
+    float browY = 7.535 + 0.05*sin(clamp((ax-0.1)/0.52,0.,1.)*3.1416) - 0.03*smoothstep(0.38,0.62,ax);
+    float bw = mix(0.042, 0.016, smoothstep(0.15,0.6,ax));
+    float brow = smoothstep(bw,bw*0.4,abs(vBase.y-browY)) * smoothstep(0.08,0.16,ax) * smoothstep(0.64,0.56,ax) * step(1.08,vBase.z);
+    brow *= 0.45 + 0.55*vn(vec3(vBase.x*95., vBase.y*24., 1.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, uHair*0.7, brow*0.95);
+    float hfw = smoothstep(0.2,0.8,length(fwidth(vBase*90.0)));
+    float hs = mix(vn(vec3(vBase.x*90., vBase.y*9., vBase.z*90.)), 0.5, hfw);
+    vec3 hairC = uHair * (0.62 + 0.55*hs);
+    diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb*0.5, hairC*0.8, 0.85), gHair);
+    { float sp = smoothstep(0.66,0.74, vn(vBase*62.0)) * (0.4 + 0.6*smoothstep(0.35,0.75, vn(vBase*7.0+11.0)));
+      float zone = smoothstep(3.4,4.6,vBase.y) * (1.0 - smoothstep(7.7,7.9,vBase.y));
+      float face = smoothstep(6.6,6.9,vBase.y) * smoothstep(0.9,1.2,vBase.z);
+      float fr = sp * max(zone*0.75, face) * uFreckles * (1.0-gHair) * (1.0-gLips);
+      diffuseColor.rgb *= mix(vec3(1.0), vec3(0.74,0.55,0.44), fr); }
+    float knit = 0.85 + 0.15*vn(vBase*vec3(220.0,40.0,220.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, uCloth*knit, gCloth);
+    { float tw = 0.82 + 0.12*sin((vBase.x*0.7+vBase.y)*420.0) + 0.14*vn(vBase*vec3(90.0,30.0,90.0));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.085,0.12,0.21)*tw, gDen); }
+  `,
+  normal:`
+    { float h = vn(vBase*58.0)*0.65 + vn(vBase*150.0)*0.35;
+      float fw = length(fwidth(vBase*58.0));
+      float k = uPore * (1.0 - smoothstep(0.25, 0.9, fw)) * (1.0-gCloth) * (1.0-gHair);
+      float hc = sin(vBase.y*260.0)*0.5 + vn(vBase*120.0)*0.5;
+      float kc = gCloth * (1.0 - smoothstep(0.3,1.0,length(fwidth(vBase*260.0))));
+      float hh = vn(vec3(vBase.x*90., vBase.y*9., vBase.z*90.));
+      float kh = gHair * 0.5 * (1.0 - smoothstep(0.2,0.8,length(fwidth(vBase*90.0))));
+      vec2 dH = vec2(dFdx(h),dFdy(h))*k + vec2(dFdx(hc),dFdy(hc))*kc*0.25 + vec2(dFdx(hh),dFdy(hh))*kh;
+      normal = perturbN(-vViewPosition, normal, dH, faceDirection); }
+  `,
+  rough:`
+    roughnessFactor = mix(roughnessFactor, 0.85, gCloth);
+    roughnessFactor = mix(roughnessFactor, 0.45, gHair);
+    roughnessFactor = mix(roughnessFactor, mix(0.36,0.22,uMakeup), gLips);
+  `,
+  physical:`
+    material.sheenColor = mix(material.sheenColor, vec3(0.45,0.45,0.5), gCloth);
+    material.clearcoat *= (1.0 - gCloth);
+  `,
+  lights:`
+    #if NUM_DIR_LIGHTS > 0
+    for (int i=0;i<NUM_DIR_LIGHTS;i++){ vec3 L = directionalLights[i].direction; float nl = dot(normal,L);
+      float wrap = max(0.0,(nl+0.55)/1.55) - max(0.0,nl);
+      reflectedLight.directDiffuse += wrap * uSSS * diffuseColor.rgb * directionalLights[i].color * 0.55 * (1.0-gCloth) * (1.0-gHair); }
+    #endif
+  `
+});
+const irisU = { value:new THREE.Color(IRIS[0]) };
+function eyeMat(cx){ return patch(new THREE.MeshPhysicalMaterial({ roughness:0.35, clearcoat:1, clearcoatRoughness:0.03, specularIntensity:0.6 }), {
+  uniforms:{ uOffset:{value:0}, uC:{value:cx}, uIris:irisU },
+  fragHead:'uniform vec3 uC; uniform vec3 uIris;\n',
+  color:`
+    vec3 d = normalize(vBase - uC); float ang = acos(clamp(d.z,-1.,1.)); float a = atan(d.y,d.x);
+    vec3 sclera = vec3(0.90,0.86,0.83) * mix(vec3(1.0), vec3(1.0,0.78,0.76), smoothstep(0.9,1.5,ang));
+    float st = vn(vec3(a*14.0, ang*26.0, 0.5));
+    vec3 iris = uIris * (0.55 + 0.75*st) + vec3(0.10,0.07,0.02)*smoothstep(0.32,0.2,ang);
+    float irisM = smoothstep(0.54,0.49,ang); float limbal = smoothstep(0.36,0.52,ang);
+    vec3 c = mix(sclera, iris*(1.0-0.65*limbal), irisM);
+    c = mix(c, vec3(0.015), smoothstep(0.205,0.175,ang));
+    diffuseColor.rgb = c;
+  ` }); }
+function centerOf(g){ const c=new THREE.Vector3(); let n=0; for (let i=0;i<NV;i++) if (GRP[i]===g){ c.x+=bx(i); c.y+=by(i); c.z+=bz(i); n++; } return c.multiplyScalar(1/n); }
+const lashU = { uOffset:{value:0}, uCL:{value:centerOf(1)}, uCR:{value:centerOf(2)}, uMakeup:skinU.uMakeup };
+const lashMat = patch(new THREE.MeshStandardMaterial({ color:0x0b0807, roughness:0.6, side:THREE.DoubleSide, alphaToCoverage:true, transparent:false }), {
+  uniforms:lashU, fragHead:'uniform vec3 uCL; uniform vec3 uCR; uniform float uMakeup;\n',
+  color:`
+    vec3 c = vBase.x>0.0 ? uCL : uCR; vec2 d = vBase.xy - c.xy; float a = atan(d.y, d.x*sign(vBase.x)); float r = length(d);
+    float st = fract(a*38.0/3.1416 + vn(vBase*40.0)*0.6); float strand = smoothstep(0.45,0.12,abs(st-0.5));
+    float lower = step(vBase.y, c.y+0.005);
+    float root = smoothstep(0.075,0.11,r); float tip = smoothstep(mix(0.185,0.135,lower), mix(0.13,0.105,lower), r);
+    strand *= mix(1.0, 0.45, lower);
+    diffuseColor.a = strand * root * tip * (0.55+0.45*uMakeup);
+    if (diffuseColor.a < 0.02) discard;
+  ` });
+const bodyMesh = new THREE.Mesh(bodyGeo, [skinMat, eyeMat(centerOf(1)), eyeMat(centerOf(2)), lashMat]);
+bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
+
+const figure = new THREE.Group(); figure.scale.setScalar(0.1);
+figure.add(bodyMesh); scene.add(figure);
+
+/* ---------- cabelo em mechas (fitas com fios gerados por shader) ---------- */
+const lowGeo = new THREE.BufferGeometry();
+const lowPos = new THREE.BufferAttribute(pos, 3); lowGeo.setAttribute('position', lowPos); lowGeo.setIndex(new THREE.BufferAttribute(INDEX,1));
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const sstep=(a,b,x)=>{ const t=Math.min(1,Math.max(0,(x-a)/(b-a))); return t*t*(3-2*t); };
+function hairlineY(z){ let y=6.95; y+= (7.62-6.95)*sstep(0.0,0.45,z); y+=(7.92-7.62)*sstep(0.45,0.85,z); return 6.80 + (y-6.80)*sstep(-0.9,0.0,z); }
+const scalpTris = (()=>{ const o=[]; for (let t=0;t<M.nt;t++){ const a=INDEX[t*3]; if (GRP[a]!==0) continue; let ok=true;
+  for (let e=0;e<3;e++){ const v=INDEX[t*3+e]; if (by(v) < hairlineY(bz(v))+0.04 || by(v)<6.6) { ok=false; break; } } if (ok) o.push(t); } return o; })();
+const STRANDS = matchMedia('(pointer:fine)').matches ? 4200 : 2600, SEG = 30, SEGLEN = 0.165, MAXLEN = SEG*SEGLEN;
+const hairGeo = new THREE.BufferGeometry();
+const hp = new Float32Array(STRANDS*(SEG+1)*2*3), hn = new Float32Array(hp.length), ht = new Float32Array(hp.length);
+const huv = new Float32Array(STRANDS*(SEG+1)*2*2), hr = new Float32Array(STRANDS*(SEG+1)*2);
+const hidx = new Uint32Array(STRANDS*SEG*6);
+for (let s0=0;s0<STRANDS;s0++) for (let k=0;k<SEG;k++){ const a=(s0*(SEG+1)+k)*2, o=(s0*SEG+k)*6; hidx.set([a,a+1,a+2, a+1,a+3,a+2], o); }
+hairGeo.setAttribute('position', new THREE.BufferAttribute(hp,3)); hairGeo.setAttribute('normal', new THREE.BufferAttribute(hn,3));
+hairGeo.setAttribute('aT', new THREE.BufferAttribute(ht,3)); hairGeo.setAttribute('uv', new THREE.BufferAttribute(huv,2));
+hairGeo.setAttribute('aR', new THREE.BufferAttribute(hr,1)); hairGeo.setIndex(new THREE.BufferAttribute(hidx,1));
+function buildHair(){
+  lowPos.needsUpdate = true; lowGeo.computeVertexNormals(); const N = lowGeo.getAttribute('normal').array, P = pos;
+  // grade espacial dos vértices do corpo para colisão
+  const CS=0.22, grid=new Map(), key=(x,y,z)=>((x+64)*131072+(y+64)*256+(z+64));
+  for (let i=0;i<NV;i++){ if (GRP[i]!==0) continue; const y=P[i*3+1]; if (y<0.5) continue;
+    const k=key(Math.floor(P[i*3]/CS),Math.floor(y/CS),Math.floor(P[i*3+2]/CS)); let b=grid.get(k); if(!b) grid.set(k,b=[]); b.push(i); }
+  const nearest=(x,y,z)=>{ const gx=Math.floor(x/CS),gy=Math.floor(y/CS),gz=Math.floor(z/CS); let best=-1,bd=1e9;
+    for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++) for (let l=-1;l<=1;l++){ const b=grid.get(key(gx+i,gy+j,gz+l)); if(!b) continue;
+      for (const v of b){ const dx=P[v*3]-x,dy=P[v*3+1]-y,dz=P[v*3+2]-z, d=dx*dx+dy*dy+dz*dz; if (d<bd){bd=d;best=v;} } } return best; };
+  // amostragem das raízes por área
+  const R = rng(7), areas=[]; let tot=0;
+  for (const t of scalpTris){ const a=INDEX[t*3]*3,b=INDEX[t*3+1]*3,c=INDEX[t*3+2]*3;
+    const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2], vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2];
+    tot += 0.5*Math.hypot(uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx); areas.push(tot); }
+  const v3=()=>new THREE.Vector3(); const p=v3(), d=v3(), n=v3(), side=v3(), tmp=v3(), headC=new THREE.Vector3(0,7.3,0.15);
+  let w=0;
+  for (let s0=0;s0<STRANDS;s0++){
+    const pick=R()*tot; let lo=0,hi=areas.length-1; while(lo<hi){ const m=(lo+hi)>>1; if (areas[m]<pick) lo=m+1; else hi=m; }
+    const t=scalpTris[lo]; let r1=R(), r2=R(); if (r1+r2>1){ r1=1-r1; r2=1-r2; }
+    const ia=INDEX[t*3],ib=INDEX[t*3+1],ic=INDEX[t*3+2];
+    p.set(0,0,0); n.set(0,0,0);
+    for (const [v,wt] of [[ia,1-r1-r2],[ib,r1],[ic,r2]]){ p.x+=P[v*3]*wt; p.y+=P[v*3+1]*wt; p.z+=P[v*3+2]*wt; n.x+=N[v*3]*wt; n.y+=N[v*3+1]*wt; n.z+=N[v*3+2]*wt; }
+    n.normalize(); const rnd=R(), lr=R(), layer=0.02+lr*lr*0.16;
+    p.addScaledVector(n, layer);
+    const top = sstep(7.5, 8.3, p.y), sx = Math.sign(p.x)||1;
+    d.set(sx*0.55*top*sstep(0.0,0.6,p.z), -0.35-0.55*(1-top), -0.85).normalize().addScaledVector(n,0.25).normalize();
+    const width = 0.075 + R()*0.05;
+    for (let k=0;k<=SEG;k++){
+      if (k>0){
+        const onTop = p.y > 7.45;
+        d.y -= (onTop ? 0.035 : 0.12) + 0.05*k/SEG;
+        if (p.z > -0.3 && p.y > 5.0) d.z -= 0.26;
+        d.z -= 0.02; d.x += (p.y>5.6 && p.z>-0.15 ? p.x*0.035 : 0.0)*(0.5+lr); d.normalize();
+        p.addScaledVector(d, SEGLEN);
+        const v=nearest(p.x,p.y,p.z);
+        if (v>=0){ tmp.set(p.x-P[v*3], p.y-P[v*3+1], p.z-P[v*3+2]); const nn=v3().set(N[v*3],N[v*3+1],N[v*3+2]); const dist=tmp.dot(nn);
+          if (dist < layer){ p.addScaledVector(nn, layer-dist); d.addScaledVector(nn, -Math.min(0,d.dot(nn))).normalize(); } n.copy(nn); }
+      }
+      const out = tmp.copy(p).sub(headC).normalize(); const sn = p.y>6.4 ? out : n.clone().lerp(out,0.3).normalize();
+      side.crossVectors(d, sn).normalize();
+      const taper = width*(1-0.55*k/SEG);
+      for (let e=0;e<2;e++){ const sgn=e?0.5:-0.5, i3=w*3;
+        hp[i3]=p.x+side.x*taper*sgn; hp[i3+1]=p.y+side.y*taper*sgn; hp[i3+2]=p.z+side.z*taper*sgn;
+        hn[i3]=sn.x; hn[i3+1]=sn.y; hn[i3+2]=sn.z; ht[i3]=d.x; ht[i3+1]=d.y; ht[i3+2]=d.z;
+        huv[w*2]=k*SEGLEN/MAXLEN; huv[w*2+1]=e; hr[w]=rnd; w++; }
+    }
+  }
+  for (const a of ['position','normal','aT','uv','aR']) hairGeo.getAttribute(a).needsUpdate=true;
+  hairGeo.computeBoundingSphere(); dirty=true;
+}
+const hairU = { uLen:{value:0.75}, uHair:skinU.uHair };
+const hairMat = new THREE.MeshPhysicalMaterial({ color:0xffffff, roughness:0.7, sheen:0.12, sheenRoughness:0.4, sheenColor:new THREE.Color(0.4,0.32,0.25),
+  side:THREE.DoubleSide, alphaToCoverage:true, specularIntensity:0.25 });
+hairMat.onBeforeCompile = sh => {
+  Object.assign(sh.uniforms, hairU);
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aT; attribute float aR; varying vec3 vT; varying float vR; varying vec2 vH;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvT = normalize(normalMatrix*aT); vR = aR; vH = uv;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uLen; uniform vec3 uHair; varying vec3 vT; varying float vR; varying vec2 vH;')
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float L = uLen*(0.8+0.3*vR);
+      if (vH.x > L) discard;
+      float tip = smoothstep(L, L-0.06, vH.x);
+      float st = fract(vH.y*5.0 + vR*17.0 + vH.x*1.5); float strand = smoothstep(0.5,0.08,abs(st-0.5));
+      float edgeF = smoothstep(0.0,0.12,vH.y)*smoothstep(1.0,0.88,vH.y);
+      diffuseColor.a = mix(0.45, 1.0, strand) * tip * edgeF;
+      if (diffuseColor.a < 0.05) discard;
+      vec3 hc = uHair * (0.7 + 0.45*vR) * (0.85 + 0.3*strand) * mix(0.55, 1.0, smoothstep(0.0, 0.12, vH.x));
+      diffuseColor.rgb = hc;`)
+    .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+      #if NUM_DIR_LIGHTS > 0
+      { vec3 V = normalize(vViewPosition); vec3 Tt = normalize(vT);
+        for (int i=0;i<NUM_DIR_LIGHTS;i++){ vec3 Ld = directionalLights[i].direction; vec3 H = normalize(Ld+V);
+          float t1 = dot(normalize(Tt + normal*0.08), H), t2 = dot(normalize(Tt - normal*0.12), H);
+          float s1 = pow(max(0.0, sqrt(max(0.0,1.0-t1*t1))), 110.0), s2 = pow(max(0.0, sqrt(max(0.0,1.0-t2*t2))), 30.0);
+          float wrap = clamp(dot(normal,Ld)*0.5+0.5, 0.0, 1.0);
+          reflectedLight.directSpecular += directionalLights[i].color * (s1*0.06*(0.4+diffuseColor.rgb) + s2*0.14*diffuseColor.rgb) * wrap * mix(0.35, 1.0, max(0.0, dot(normal, V))); } }
+      #endif`);
+};
+const hairMesh = new THREE.Mesh(hairGeo, hairMat); hairMesh.frustumCulled = false;
+figure.add(hairMesh);
+
+/* ---------- brincos ---------- */
+const lobeL = 12130; let lobeR = -1; { let bd=1e9; for (let i=0;i<NV;i++){ if (GRP[i]) continue; const d=(bx(i)+bx(lobeL))**2+(by(i)-by(lobeL))**2+(bz(i)-bz(lobeL))**2; if (d<bd){ bd=d; lobeR=i; } } }
+const goldMat = new THREE.MeshPhysicalMaterial({ color:0xd8b26a, metalness:1, roughness:0.22 });
+const hoopGeo = new THREE.TorusGeometry(0.13, 0.016, 12, 48);
+const earL = new THREE.Mesh(hoopGeo, goldMat), earR = new THREE.Mesh(hoopGeo, goldMat);
+for (const e of [earL,earR]){ e.rotation.y = Math.PI/2; e.castShadow = true; figure.add(e); }
+function placeEarrings(){ for (const [e,v] of [[earL,lobeL],[earR,lobeR]]) e.position.set(pos[v*3]+(v===lobeL?0.02:-0.02), pos[v*3+1]-0.12, pos[v*3+2]); }
+
+/* ---------- morph ---------- */
+/* ---------- pose: esqueleto e pesos do MakeHuman (CC0), skinning linear só em braços e pernas ---------- */
+const POSEW = new Uint8Array(BUF, M.posew, NV*5);
+function jpos(name){ const ids=M.joints[name]; const v=new THREE.Vector3(); for (const i of ids){ v.x+=pos[i*3]; v.y+=pos[i*3+1]; v.z+=pos[i*3+2]; } return v.multiplyScalar(1/ids.length); }
+function rotAbout(pivot, axis, ang){ const m=new THREE.Matrix4().makeTranslation(pivot.x,pivot.y,pivot.z); m.multiply(new THREE.Matrix4().makeRotationAxis(axis,ang)); m.multiply(new THREE.Matrix4().makeTranslation(-pivot.x,-pivot.y,-pivot.z)); return m; }
+function applyPose(){
+  if (!S.pose) return;
+  const Z=new THREE.Vector3(0,0,1), X=new THREE.Vector3(1,0,0), v=new THREE.Vector3(), a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3(), d=new THREE.Vector3(), e=new THREE.Vector3();
+  const mats={};
+  for (const [sd,sg] of [['L',1],['R',-1]]){
+    const sh=jpos(`upperarm01.${sd}____head`), el=jpos(`lowerarm01.${sd}____head`), hp=jpos(`upperleg01.${sd}____head`), kn=jpos(`lowerleg01.${sd}____head`);
+    const armAng0 = Math.atan2(sg*(el.x-sh.x), sh.y-el.y);           // ângulo do braço a partir da vertical
+    const armT = 0.14 + (armAng0-0.14)*S.armOpen;
+    const Ma = rotAbout(sh, Z, -sg*(armAng0-armT));
+    const elP = el.clone().applyMatrix4(Ma);
+    const Mf = rotAbout(elP, X, -0.2).multiply(Ma);
+    const Ms = rotAbout(sh, Z, -sg*(armAng0-armT)*0.45);
+    const legAng0 = Math.atan2(sg*(kn.x-hp.x), hp.y-kn.y);
+    const legT = 0.02 + (legAng0-0.02)*S.legOpen;
+    const Mt = rotAbout(hp, Z, -sg*(legAng0-legT));
+    mats[sg]=[Ma,Mf,Ms,Mt,Mt];
+  }
+  for (let i=0;i<NV;i++){
+    const o=i*5; const wa=POSEW[o]/255, wf=POSEW[o+1]/255, ws=POSEW[o+2]/255, wt=POSEW[o+3]/255, wl=POSEW[o+4]/255;
+    const tot=wa+wf+ws+wt+wl; if (tot<0.002) continue;
+    const m=mats[BASE[i*3]>=0?1:-1]; v.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
+    a.copy(v).applyMatrix4(m[0]); b.copy(v).applyMatrix4(m[1]); c.copy(v).applyMatrix4(m[2]); d.copy(v).applyMatrix4(m[3]); e.copy(v).applyMatrix4(m[4]);
+    const w0=Math.max(0,1-tot);
+    pos[i*3]   = v.x*w0 + a.x*wa + b.x*wf + c.x*ws + d.x*wt + e.x*wl;
+    pos[i*3+1] = v.y*w0 + a.y*wa + b.y*wf + c.y*ws + d.y*wt + e.y*wl;
+    pos[i*3+2] = v.z*w0 + a.z*wa + b.z*wf + c.z*ws + d.z*wt + e.z*wl;
+  }
+}
+function applyMorph(){
+  pos.set(BASE);
+  for (const [n,w] of weights()){ const t=T[n], ix=t.idx, d=t.d, k=w*t.s;
+    for (let i=0;i<ix.length;i++){ const j=ix[i]*3, q=i*3; pos[j]+=d[q]*k; pos[j+1]+=d[q+1]*k; pos[j+2]+=d[q+2]*k; } }
+  applyPose(); smoothNipples(); subdivide(pos, spos); posAttr.needsUpdate = true; bodyGeo.computeVertexNormals(); normAttr.needsUpdate = true;
+  bodyGeo.computeBoundingSphere();
+  let minY=Infinity, maxY=-Infinity; for (let i=0;i<NV;i++) if (GRP[i]===0){ const y=pos[i*3+1]; if (y<minY) minY=y; if (y>maxY) maxY=y; }
+  figure.position.y = -minY*0.1;
+  placeEarrings(); scheduleHair();
+  measure(minY, maxY);
+  if (typeof userMoved!=='undefined' && !userMoved && !tween) goView(curView,true);
+  dirty = true;
+}
+
+let hairT=null; function scheduleHair(){ clearTimeout(hairT); hairT=setTimeout(buildHair, hairMesh.geometry.boundingSphere ? 260 : 0); }
+
+/* ---------- fita métrica: cortes horizontais do tronco ---------- */
+const torsoTris = (()=>{ const o=[]; for (let t=0;t<M.nt;t++){ const a=INDEX[t*3],b=INDEX[t*3+1],c=INDEX[t*3+2]; if (isTorso[a]&&isTorso[b]&&isTorso[c]) o.push(a,b,c); } return new Uint32Array(o); })();
+let bustV=-1, crotchV=-1;
+{ let bz0=-1e9, cy=1e9; for (let i=0;i<NV;i++){ if (GRP[i]) continue; const x=Math.abs(bx(i)), y=by(i), z=bz(i);
+  if (y>3.0&&y<4.0&&x>0.45&&x<1.2&&z>bz0){ bz0=z; bustV=i; }
+  if (x<0.06&&y>-1.6&&y<-0.4&&y<cy){ cy=y; crotchV=i; } } }
+function slice(y0){
+  const pts=[]; const P=pos;
+  for (let t=0;t<torsoTris.length;t+=3){
+    for (let e=0;e<3;e++){ const a=torsoTris[t+e]*3, b=torsoTris[t+(e+1)%3]*3; const ya=P[a+1]-y0, yb=P[b+1]-y0;
+      if ((ya<0)!==(yb<0)){ const s=ya/(ya-yb); pts.push([P[a]+(P[b]-P[a])*s, P[a+2]+(P[b+2]-P[a+2])*s]); } } }
+  if (pts.length<3) return 0;
+  pts.sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[]; for (const p of pts){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); }
+  for (let i=pts.length-1;i>=0;i--){ const p=pts[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
+  const h=lo.slice(0,-1).concat(up.slice(0,-1)); let per=0; for (let i=0;i<h.length;i++){ const a=h[i],b=h[(i+1)%h.length]; per+=Math.hypot(a[0]-b[0],a[1]-b[1]); }
+  return per;
+}
+// suaviza a região do mamilo sob a roupa (a malha base tem esse relevo esculpido)
+const nipSet = (()=>{ const tips=[bustV]; let bd=1e9, m=-1; for (let i=0;i<NV;i++){ if (GRP[i]) continue; const d=(bx(i)+bx(bustV))**2+(by(i)-by(bustV))**2+(bz(i)-bz(bustV))**2; if (d<bd){bd=d;m=i;} } tips.push(m);
+  const set=new Map(); for (let i=0;i<NV;i++){ if (GRP[i]) continue; for (const t of tips){ const d=Math.hypot(bx(i)-bx(t),by(i)-by(t),bz(i)-bz(t)); if (d<0.22) set.set(i, 1-d/0.22); } }
+  const nb=new Map(); for (const i of set.keys()) nb.set(i,new Set());
+  for (let t=0;t<M.nt;t++) for (let e=0;e<3;e++){ const a=INDEX[t*3+e], b=INDEX[t*3+(e+1)%3]; if (nb.has(a)) nb.get(a).add(b); if (nb.has(b)) nb.get(b).add(a); }
+  return [...set].map(([i,w])=>({ i, w:Math.min(1,w*1.6), n:[...nb.get(i)] })); })();
+function smoothNipples(){ for (let it=0; it<12; it++){ for (const {i,w,n} of nipSet){ let x=0,y=0,z=0; for (const j of n){ x+=pos[j*3]; y+=pos[j*3+1]; z+=pos[j*3+2]; } const k=1/n.length;
+  pos[i*3]+= (x*k-pos[i*3])*w*0.6; pos[i*3+1]+= (y*k-pos[i*3+1])*w*0.6; pos[i*3+2]+= (z*k-pos[i*3+2])*w*0.6; } } }
+function volume(){ let v=0; const P=pos; for (let t=0;t<M.nt;t++){ const a=INDEX[t*3]; if (GRP[a]!==0) continue; const b=INDEX[t*3+1]*3, c=INDEX[t*3+2]*3, A=a*3;
+  v += P[A]*(P[b+1]*P[c+2]-P[b+2]*P[c+1]) - P[A+1]*(P[b]*P[c+2]-P[b+2]*P[c]) + P[A+2]*(P[b]*P[c+1]-P[b+1]*P[c]); } return Math.abs(v)/6; }
+function measure(minY,maxY){
+  const bustY = pos[bustV*3+1], cY = pos[crotchV*3+1];
+  const bust = slice(bustY);
+  let hips=0, hipY=cY+0.6; for (let y=cY+0.2;y<cY+1.6;y+=0.08){ const p=slice(y); if (p>hips){ hips=p; hipY=y; } }
+  let waist=1e9; for (let y=hipY+0.4;y<bustY-0.5;y+=0.08){ const p=slice(y); if (p>0&&p<waist) waist=p; }
+  if (waist===1e9) waist=0;
+  const kg = volume()*1.01; // densidade média do corpo ≈ 1,01 kg/L
+  $('tape').innerHTML = [['altura',(maxY-minY)*10,'cm'],['busto',bust*10,'cm'],['cintura',waist*10,'cm'],['quadril',hips*10,'cm'],['peso est.',kg,'kg']]
+    .map(([l,v,u])=>`<div><small>${l}</small><b>${Math.round(v)}</b> ${u}</div>`).join('');
+}
+
+/* ---------- pós-processamento ---------- */
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1,1,{ type:THREE.HalfFloatType, samples:4 }));
+composer.addPass(new RenderPass(scene, camera));
+const fine = matchMedia('(pointer:fine)').matches;
+let gtao = null;
+if (fine){ gtao = new GTAOPass(scene, camera, 2, 2); gtao.updateGtaoMaterial({ radius:0.12, distanceExponent:1.5, thickness:0.6, scale:1 }); gtao.blendIntensity = 0.85; composer.addPass(gtao); }
+composer.addPass(new OutputPass());
+
+let userMoved=false;
+function resize(){ const r=stage.getBoundingClientRect(); const w=Math.max(1,r.width), h=Math.max(1,r.height);
+  renderer.setSize(w,h,false); composer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); if (!userMoved) goView(curView,true); dirty=true; }
+new ResizeObserver(resize).observe(stage);
+let dirty = true;
+controls.addEventListener('change', ()=>dirty=true);
+controls.addEventListener('start', ()=>{ userMoved=true; tween=null; });
+function loop(){ requestAnimationFrame(loop); if (tween) stepTween(); controls.update(); if (dirty){ composer.render(); dirty=false; } }
+
+/* ---------- câmera ---------- */
+let tween=null, curView='body';
+function figSize(){ let mx=-1e9, mn=1e9, sx=0; for (let i=0;i<NV;i+=3) if (GRP[i]===0){ const y=pos[i*3+1]; if(y>mx)mx=y; if(y<mn)mn=y; const x=Math.abs(pos[i*3]); if (x>sx) sx=x; } return { h:(mx-mn)*0.1, w:sx*0.2 }; }
+function viewFor(v){
+  const { h, w } = figSize(); const fov = camera.fov*Math.PI/180, asp = camera.aspect;
+  const fit = (hs, ws) => Math.max(hs/2/Math.tan(fov/2), ws/2/(Math.tan(fov/2)*asp));
+  let ty, d, dir = new THREE.Vector3(0.12,0.05,1).normalize();
+  if (v==='torso'){ ty=h*0.68; d=fit(h*0.42, w*0.55); }
+  else if (v==='face'){ ty=h*0.925; d=fit(h*0.17, h*0.17); dir.set(0.15,0.0,1).normalize(); }
+  else { ty=h*0.5; d=fit(h*1.22, w*1.08); if (v==='back') dir.set(-0.12,0.05,-1).normalize(); }
+  return { p:new THREE.Vector3(0,ty,0).addScaledVector(dir,d), t:new THREE.Vector3(0,ty,0) };
+}
+function goView(v, instant){ curView=v; const V=viewFor(v);
+  if (instant){ camera.position.copy(V.p); controls.target.copy(V.t); controls.update(); dirty=true; return; }
+  tween={ f:0, p0:camera.position.clone(), t0:controls.target.clone(), p1:V.p, t1:V.t }; }
+function stepTween(){ const r = matchMedia('(prefers-reduced-motion:reduce)').matches; tween.f = r?1:Math.min(1,tween.f+0.06); const e=1-Math.pow(1-tween.f,3);
+  camera.position.lerpVectors(tween.p0,tween.p1,e); controls.target.lerpVectors(tween.t0,tween.t1,e); dirty=true; if (tween.f>=1) tween=null; }
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{ userMoved=false; goView(b.dataset.view); }));
+
+/* ---------- interface ---------- */
+const TABS = [
+ { id:'geral', name:'Geral', rows:[
+   ['m','weight','Peso','Magra','Pesada'], ['m','muscle','Musculatura','Pouca','Muita'],
+   ['m','height','Altura','Baixa','Alta'], ['m','prop','Proporções','Incomuns','Idealizadas'] ]},
+ { id:'rosto', name:'Rosto', rows:[
+   ['p','faceshape','Formato do rosto','Quadrado','Oval'], ['p','cheekb','Maçãs do rosto','Suaves','Marcadas'], ['p','jaw','Mandíbula','Delicada','Marcada'],
+   ['p','chinw','Queixo','Estreito','Largo'], ['p','eyesz','Olhos','Menores','Maiores'], ['p','brow','Sobrancelhas','Mais baixas','Mais altas'],
+   ['p','nose','Nariz','Menor','Maior'], ['p','nosew','Largura do nariz','Fino','Largo'], ['p','nosetip','Ponta do nariz','Para baixo','Arrebitada'],
+   ['p','lips','Lábios','Finos','Cheios'], ['p','mouthw','Largura da boca','Estreita','Larga'] ]},
+ { id:'busto', name:'Busto', rows:[
+   ['m','cup','Tamanho dos seios','Menor','Maior'], ['m','firm','Firmeza','Menos','Mais'], ['p','bust','Circunferência do busto'],
+   ['p','brpos','Altura dos seios','Mais baixos','Mais altos'], ['p','brdist','Distância entre seios','Juntos','Afastados'],
+   ['p','brpoint','Projeção','Menos','Mais'], ['p','brvert','Volume','Embaixo','Em cima'] ]},
+ { id:'tronco', name:'Tronco', rows:[
+   ['p','shoulder','Largura dos ombros'], ['p','pec','Peitoral'], ['p','dorsi','Dorsais'], ['p','vshape','Forma em V'],
+   ['p','torsow','Largura do tronco'], ['p','waist','Cintura'], ['p','belly','Barriga'], ['p','neck','Pescoço'] ]},
+ { id:'quadril', name:'Quadril', rows:[ ['p','hipw','Largura do quadril'], ['p','hips','Circunferência do quadril'], ['p','glute','Glúteos'] ]},
+ { id:'bracos', name:'Braços', rows:[ ['p','uarm','Espessura do braço'], ['p','uarmfat','Gordura do braço'], ['p','uarmmus','Músculo do braço e ombro'], ['p','larm','Antebraço'], ['p','armlen','Comprimento do braço'] ]},
+ { id:'pernas', name:'Pernas', rows:[ ['p','thigh','Coxas'], ['p','thighfat','Gordura da coxa'], ['p','thighmus','Músculo da coxa'], ['p','calf','Panturrilha'], ['p','leglen','Comprimento da perna'] ]},
+ { id:'visual', name:'Visual', rows:[] },
+ { id:'foto', name:'Foto', rows:[] },
+ { id:'salvos', name:'Salvos', rows:[] },
+];
+let curTab='geral';
+const tabsEl=$('tabs'), listEl=$('list');
+for (const t of TABS){ const b=document.createElement('button'); b.className='tab'; b.role='tab'; b.id='tab-'+t.id; b.textContent=t.name;
+  b.setAttribute('aria-selected', t.id===curTab); b.onclick=()=>{ const was=curTab; curTab=t.id; if (was==='foto' && curTab!=='foto') leavePhoto(); renderTab(); }; tabsEl.append(b); }
+function rangeFor(kind,key){ if (kind==='m') return extreme ? [-0.5,1.5] : [0,1]; return extreme ? [-2.5,2.5] : [-1,1]; }
+function fmt(kind,key,v){ if (kind==='m') return Math.round(v*100); return (v>0?'+':'')+Math.round(v*100)+'%'; }
+function track(el,kind,key){ const [lo,hi]=rangeFor(kind,key); const v=+el.value; const p=(v-lo)/(hi-lo)*100;
+  const c = ((kind==='m'?0.5:0)-lo)/(hi-lo)*100;
+  const a=Math.min(p,c), b=Math.max(p,c);
+  el.style.setProperty('--trk', `linear-gradient(90deg, var(--raise) ${a}%, var(--tape) ${a}%, var(--tape) ${b}%, var(--raise) ${b}%)`); }
+let pending=false; function schedule(){ if (pending) return; pending=true; requestAnimationFrame(()=>{ pending=false; applyMorph(); }); }
+function renderTab(){
+  tabsEl.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', b.id==='tab-'+curTab));
+  const T0 = TABS.find(t=>t.id===curTab); listEl.innerHTML='';
+  photoFrame.hidden = curTab!=='foto'; $('tape').hidden = curTab==='foto';
+  if (curTab==='visual') return renderVisual(); if (curTab==='salvos') return renderSaves(); if (curTab==='foto') return renderPhoto();
+  for (const [kind,key,label,lo,hi] of T0.rows){
+    const row=document.createElement('div'); row.className='row'; const id='s-'+key;
+    const [mn,mx]=rangeFor(kind,key); const val = kind==='m'?S.m[key]:S.p[key];
+    row.innerHTML = `<label for="${id}"><span>${label}</span><output id="o-${key}">${fmt(kind,key,val)}</output></label>
+      <input type="range" id="${id}" min="${mn}" max="${mx}" step="0.01" value="${val}">
+      <div class="hint"><span>${lo||'Menor'}</span><span>${hi||'Maior'}</span></div>`;
+    const inp=row.querySelector('input'); track(inp,kind,key);
+    inp.addEventListener('input',()=>{ const v=+inp.value; if (kind==='m') S.m[key]=v; else S.p[key]=v; $('o-'+key).textContent=fmt(kind,key,v); track(inp,kind,key); schedule(); });
+    inp.addEventListener('dblclick',()=>{ const d = kind==='m'?MACRO_DEF[key]:(PAIR_DEF[key]||0); inp.value=d; inp.dispatchEvent(new Event('input')); });
+    listEl.append(row);
+  }
+  if (T0.note){ const n=document.createElement('p'); n.className='note'; n.textContent=T0.note; listEl.append(n); }
+  if (extreme){ const n=document.createElement('p'); n.className='note warn'; n.textContent='Modo extremo: os limites passam do que existe nos dados de escaneamento. A malha começa a deformar e a roupa atravessa o corpo.'; listEl.append(n); }
+  const tip=document.createElement('p'); tip.className='note'; tip.textContent='Toque duas vezes num controle para voltar ao padrão.'; listEl.append(tip);
+}
+function swatchRow(title, list, cur, onPick){
+  const h=document.createElement('div'); h.className='sect'; h.textContent=title; listEl.append(h);
+  const w=document.createElement('div'); w.className='swatches';
+  list.forEach((c,i)=>{ const b=document.createElement('button'); b.className='sw'+(i===cur?' on':''); b.style.background=c; b.setAttribute('aria-label',title+' '+(i+1));
+    b.onclick=()=>{ onPick(i); renderTab(); }; w.append(b); }); listEl.append(w);
+}
+function applyColors(){ skinMat.color.set(SKINS[S.skin]); skinU.uHair.value.set(HAIRS[S.hair]); skinU.uCloth.value.set(CLOTH[S.cloth]);
+  irisU.value.set(IRIS[S.eye]); skinU.uLip.value.set(LIPS[S.lip]); skinU.uMakeup.value=S.makeup; skinU.uOutfit.value=S.outfit;
+  hairU.uLen.value=S.hairLen; earL.visible=earR.visible=!!S.ear; skinU.uFreckles.value=S.freckles; dirty=true; }
+function chips(title, names, cur, onPick){
+  const h=document.createElement('div'); h.className='sect'; h.textContent=title; listEl.append(h);
+  const w=document.createElement('div'); w.className='bar'; w.style.padding='8px 0';
+  names.forEach((nm,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===cur?' on':''); b.textContent=nm; b.setAttribute('aria-pressed', i===cur);
+    b.onclick=()=>{ onPick(i); renderTab(); }; w.append(b); }); listEl.append(w);
+}
+function simpleSlider(id, label, val, lo, hi, onSet){
+  const row=document.createElement('div'); row.className='row';
+  row.innerHTML=`<label for="${id}"><span>${label}</span><output id="o-${id}">${Math.round(val*100)}</output></label><input type="range" id="${id}" min="0" max="1" step="0.01" value="${val}"><div class="hint"><span>${lo}</span><span>${hi}</span></div>`;
+  const inp=row.querySelector('input'); const tr=()=>inp.style.setProperty('--trk',`linear-gradient(90deg, var(--tape) ${inp.value*100}%, var(--raise) ${inp.value*100}%)`); tr();
+  inp.addEventListener('input',()=>{ onSet(+inp.value); $('o-'+id).textContent=Math.round(inp.value*100); tr(); applyColors(); });
+  listEl.append(row);
+}
+function renderVisual(){
+  chips('Roupa', OUTFITS, S.outfit, i=>{ S.outfit=i; applyColors(); });
+  swatchRow('Cor da roupa', CLOTH, S.cloth, i=>{ S.cloth=i; applyColors(); });
+  simpleSlider('hairlen','Comprimento do cabelo', S.hairLen, 'Curto', 'Longo', v=>S.hairLen=Math.max(0.12,v));
+  swatchRow('Cabelo e sobrancelhas', HAIRS, S.hair, i=>{ S.hair=i; applyColors(); });
+  swatchRow('Tom de pele', SKINS, S.skin, i=>{ S.skin=i; applyColors(); });
+  swatchRow('Olhos', IRIS, S.eye, i=>{ S.eye=i; applyColors(); });
+  simpleSlider('makeup','Maquiagem', S.makeup, 'Natural', 'Marcada', v=>S.makeup=v);
+  simpleSlider('freckles','Sardas', S.freckles, 'Nenhuma', 'Muitas', v=>S.freckles=v);
+  swatchRow('Cor dos lábios', LIPS, S.lip, i=>{ S.lip=i; applyColors(); });
+  chips('Brincos', ['Sem brincos','Argolas douradas'], S.ear?1:0, i=>{ S.ear=i; applyColors(); });
+  const n=document.createElement('p'); n.className='note';
+  n.textContent='Pele, maquiagem, olhos e cabelo são gerados por código, sem fotos. No Unreal com MetaHuman entram texturas escaneadas e cabelo fio a fio de verdade.';
+  listEl.append(n);
+}
+/* ---------- modo foto: guias para o ComfyUI ---------- */
+const photoFrame = $('photoFrame');
+const PHOTO = { frame:0, yaw:1, scene:1, extra:'', strength:0.6, seed:Math.floor(Math.random()*1e9) };
+const GW=832, GH=1216;
+let lastGuides = null;
+function photoView(instant=true){
+  const f = PHOTO.frame===2 ? 85 : 50; camera.fov = 2*Math.atan(18/f)*180/Math.PI; camera.updateProjectionMatrix();
+  const { h } = figSize();
+  const ty = [h*0.5, h*0.66, h*0.865][PHOTO.frame], span=[h*1.1, h*0.64, h*0.3][PHOTO.frame];
+  const dist = (span/2)/Math.tan(camera.fov*Math.PI/360);
+  const yaw = [0, 0.42, 1.35][PHOTO.yaw];
+  const t = new THREE.Vector3(0,ty,0); const p = new THREE.Vector3(Math.sin(yaw)*dist, ty + (PHOTO.frame===0? 0 : h*0.01), Math.cos(yaw)*dist);
+  userMoved=true; tween=null; camera.position.copy(p); controls.target.copy(t); controls.update(); dirty=true;
+}
+function leavePhoto(){ camera.fov = 30; camera.updateProjectionMatrix(); userMoved=false; goView('body', true); }
+const depthVS = `attribute vec2 uv2x; varying float vZ; varying vec2 vH; varying float vR;
+  #ifdef HAIR
+  attribute float aR;
+  #endif
+  void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vZ = -mv.z;
+  #ifdef HAIR
+  vH = uv; vR = aR;
+  #endif
+  gl_Position = projectionMatrix*mv; }`;
+const depthFS = `uniform float uNear, uFar, uLen; varying float vZ; varying vec2 vH; varying float vR;
+  void main(){
+  #ifdef HAIR
+    if (vH.x > uLen*(0.8+0.3*vR)) discard;
+  #endif
+    float d = clamp(1.0-(vZ-uNear)/(uFar-uNear), 0.0, 1.0); gl_FragColor = vec4(vec3(0.12+0.88*pow(d,0.85)), 1.0); }`;
+const depthU = { uNear:{value:1}, uFar:{value:5}, uLen:hairU.uLen };
+const depthMat = new THREE.ShaderMaterial({ uniforms:depthU, vertexShader:depthVS, fragmentShader:depthFS, side:THREE.DoubleSide });
+const depthHairMat = new THREE.ShaderMaterial({ uniforms:depthU, vertexShader:depthVS, fragmentShader:depthFS, side:THREE.DoubleSide, defines:{ HAIR:1 } });
+const hideMat = new THREE.MeshBasicMaterial({ visible:false });
+function snap(){ return new Promise(res=>renderer.domElement.toBlob(b=>res(b),'image/png')); }
+async function renderGuides(){
+  const prevPR = renderer.getPixelRatio(), prevSize = renderer.getSize(new THREE.Vector2()), prevAspect = camera.aspect;
+  renderer.setPixelRatio(1); renderer.setSize(GW, GH, false); composer.setPixelRatio(1); composer.setSize(GW, GH);
+  camera.aspect = GW/GH; camera.updateProjectionMatrix();
+  disc.visible=false;
+  const prevClear = renderer.getClearColor(new THREE.Color()), prevAlpha = renderer.getClearAlpha();
+  renderer.setClearColor(0x1a1b1e, 1);
+  composer.render(); const beautyP = snap();
+  // faixa de profundidade a partir dos vértices do corpo e do cabelo
+  figure.updateMatrixWorld(true); const mv = new THREE.Matrix4().multiplyMatrices(camera.matrixWorldInverse, figure.matrixWorld);
+  // faixa só da superfície visível (normais voltadas para a câmera): mais contraste no relevo do corpo
+  let zn=1e9, zf=-1e9; const v=new THREE.Vector3(), nv=new THREE.Vector3(); const nm=new THREE.Matrix3().getNormalMatrix(mv); const SN=normAttr.array, SG=LOOP.grp;
+  for (let i=0;i<LOOP.n;i+=3){ if (SG[i]!==0) continue; v.set(spos[i*3],spos[i*3+1],spos[i*3+2]).applyMatrix4(mv); nv.set(SN[i*3],SN[i*3+1],SN[i*3+2]).applyMatrix3(nm);
+    if (nv.dot(v) > 0) continue; const z=-v.z; if (z<zn) zn=z; if (z>zf) zf=z; }
+  depthU.uNear.value = zn-0.01; depthU.uFar.value = zf+0.02;
+  const keep = { body:bodyMesh.material, hair:hairMesh.material, ear:earL.material };
+  bodyMesh.material = [depthMat, depthMat, depthMat, hideMat]; hairMesh.material = depthHairMat; earL.material = earR.material = depthMat;
+  ground.visible=false; renderer.setClearColor(0x000000, 1); renderer.toneMapping = THREE.NoToneMapping;
+  renderer.setRenderTarget(null); renderer.render(scene, camera); const depthP = snap();
+  bodyMesh.material = keep.body; hairMesh.material = keep.hair; earL.material = earR.material = keep.ear;
+  ground.visible=true; disc.visible=true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.setClearColor(prevClear, prevAlpha);
+  renderer.setPixelRatio(prevPR); renderer.setSize(prevSize.x, prevSize.y, false); composer.setPixelRatio(prevPR); composer.setSize(prevSize.x, prevSize.y);
+  camera.aspect = prevAspect; camera.updateProjectionMatrix(); dirty = true;
+  const [beauty, depth] = await Promise.all([beautyP, depthP]);
+  return { beauty, depth, prompt:describe(), negative:NEGATIVE };
+}
+const APP = true;
+const NEGATIVE = 'cartoon, anime, illustration, painting, 3d render, cgi, doll, mannequin, plastic skin, airbrushed, deformed, bad anatomy, extra limbs, extra fingers, mutated hands, blurry, lowres, jpeg artifacts, watermark, text, logo, nude, nsfw, child, teen, underage';
+function describe(){
+  const m=S.m, p=S.p, w=m.weight, parts=[];
+  const body = w<0.2?'very slim body':w<0.4?'slim body':w<0.55?'average build':w<0.7?'curvy full-figured body':w<0.85?'plus-size voluptuous body':w<1.05?'very plus-size heavyset body':'obese very large soft body';
+  parts.push(body);
+  if (m.muscle>0.75) parts.push('athletic toned muscles'); else if (m.muscle<0.2) parts.push('soft untoned body');
+  if (m.height<0.3) parts.push('petite'); else if (m.height>0.72) parts.push('tall');
+  const cup=m.cup+0.25*p.bust; parts.push(cup<0.3?'small bust':cup<0.55?'medium bust':cup<0.8?'full bust':cup<1.05?'large heavy bust':cup<1.3?'very large heavy bust':'extremely large heavy bust');
+  const hip=(p.hips+p.hipw+p.glute)/3; if (hip>0.35) parts.push('wide hips'); else if (hip<-0.3) parts.push('narrow hips');
+  if (p.waist<-0.3) parts.push('defined narrow waist'); if (p.belly>0.35 || w>0.8) parts.push('soft round belly');
+  if (p.thigh>0.35 || p.thighfat>0.35) parts.push('thick thighs');
+  const skin=['very fair','fair','light olive','tan','brown','deep brown'][S.skin];
+  const hairC=['black','dark brown','chestnut brown','light brown','honey blonde','copper red','silver gray'][S.hair];
+  const hairL=S.hairLen<0.35?'chin-length':S.hairLen<0.6?'shoulder-length':S.hairLen<0.85?'long':'very long';
+  const eyes=['brown','hazel','green','blue','gray'][S.eye];
+  const lip=['rosy nude','deep red','pink','brick brown','peach'][S.lip];
+  const cloth=['black','ivory','burgundy','dusty pink','navy blue','forest green','beige'][S.cloth];
+  const outfit=[`a ${cloth} lace-trim bralette and matching briefs`, `a ${cloth} one-piece swimsuit`, `a ${cloth} sports bra and fitted shorts`, `a fitted ${cloth} cropped t-shirt showing her midriff and high-waisted dark denim shorts`][S.outfit];
+  const makeup=S.makeup<0.25?'no makeup, natural look':S.makeup<0.6?'light natural makeup':`defined eyeliner and mascara, ${lip} lipstick`;
+  const frame=['full body photo','three-quarter body photo, from the thighs up','close-up portrait photo, head and shoulders'][PHOTO.frame];
+  const angle=['facing the camera','body turned slightly to the side','in profile'][PHOTO.yaw];
+  const scene=['plain light gray studio backdrop, large softbox lighting','cozy apartment room, soft natural window light','beach at golden hour, warm sunlight'][PHOTO.scene];
+  const age=['in her mid-twenties','in her thirties','in her forties'][S.age];
+  const extra = PHOTO.extra.trim();
+  return [`RAW photo, ${frame} of an adult woman ${age}`, parts.join(', '), `${skin} skin${S.freckles>0.3?', freckles':''}`,
+    `${hairL} ${hairC} hair`, `${eyes} eyes`, makeup, `wearing ${outfit}`, S.ear?'small gold hoop earrings':'', `standing, relaxed natural pose, ${angle}, looking at the camera, gentle smile`,
+    scene, PHOTO.frame===2?'85mm lens, f/2':'50mm lens, f/2.8', 'shallow depth of field, detailed skin texture, visible pores, natural skin imperfections, photorealistic, sharp focus', extra]
+    .filter(Boolean).join(', ');
+}
+function workflow(prompt, negative){
+  let L=0; const links=[]; const link=(a,as,b,bs,t)=>{ L++; links.push([L,a,as,b,bs,t]); return L; };
+  const l1=link(1,0,7,0,'MODEL'), l2=link(1,1,2,0,'CLIP'), l3=link(1,1,3,0,'CLIP'), l4=link(1,2,8,1,'VAE');
+  const l5=link(2,0,6,0,'CONDITIONING'), l6=link(3,0,6,1,'CONDITIONING'), l7=link(5,0,6,2,'CONTROL_NET'), l8=link(4,0,6,3,'IMAGE');
+  const l9=link(6,0,7,1,'CONDITIONING'), l10=link(6,1,7,2,'CONDITIONING'), l11=link(9,0,7,3,'LATENT'), l12=link(7,0,8,0,'LATENT'), l13=link(8,0,10,0,'IMAGE');
+  const N=(id,type,pos,size,inputs,outputs,widgets,order,title)=>({ id, type, pos, size, flags:{}, order, mode:0, inputs, outputs, properties:{'Node name for S&R':type}, widgets_values:widgets, ...(title?{title}:{}) });
+  const nodes=[
+    N(1,'CheckpointLoaderSimple',[40,120],[340,100],[],[{name:'MODEL',type:'MODEL',links:[l1],slot_index:0},{name:'CLIP',type:'CLIP',links:[l2,l3],slot_index:1},{name:'VAE',type:'VAE',links:[l4],slot_index:2}],['RealVisXL_V5.0_fp16.safetensors'],0),
+    N(2,'CLIPTextEncode',[420,40],[460,220],[{name:'clip',type:'CLIP',link:l2}],[{name:'CONDITIONING',type:'CONDITIONING',links:[l5],slot_index:0}],[prompt],4,'Prompt da personagem'),
+    N(3,'CLIPTextEncode',[420,300],[460,140],[{name:'clip',type:'CLIP',link:l3}],[{name:'CONDITIONING',type:'CONDITIONING',links:[l6],slot_index:0}],[negative],5,'Negativo'),
+    N(4,'LoadImage',[40,300],[340,380],[],[{name:'IMAGE',type:'IMAGE',links:[l8],slot_index:0},{name:'MASK',type:'MASK',links:[],slot_index:1}],['provador_profundidade.png','image'],1,'Guia de profundidade (do Provador 3D)'),
+    N(5,'ControlNetLoader',[40,720],[340,60],[],[{name:'CONTROL_NET',type:'CONTROL_NET',links:[l7],slot_index:0}],['controlnet-depth-sdxl-1.0.safetensors'],2),
+    N(6,'ControlNetApplyAdvanced',[920,120],[320,170],[{name:'positive',type:'CONDITIONING',link:l5},{name:'negative',type:'CONDITIONING',link:l6},{name:'control_net',type:'CONTROL_NET',link:l7},{name:'image',type:'IMAGE',link:l8}],
+      [{name:'positive',type:'CONDITIONING',links:[l9],slot_index:0},{name:'negative',type:'CONDITIONING',links:[l10],slot_index:1}],[PHOTO.strength,0,0.8],6,'Força do corpo editado'),
+    N(9,'EmptyLatentImage',[920,340],[320,110],[],[{name:'LATENT',type:'LATENT',links:[l11],slot_index:0}],[GW,GH,1],3),
+    N(7,'KSampler',[1280,120],[320,270],[{name:'model',type:'MODEL',link:l1},{name:'positive',type:'CONDITIONING',link:l9},{name:'negative',type:'CONDITIONING',link:l10},{name:'latent_image',type:'LATENT',link:l11}],
+      [{name:'LATENT',type:'LATENT',links:[l12],slot_index:0}],[PHOTO.seed,'randomize',30,4.5,'dpmpp_2m_sde','karras',1],7),
+    N(8,'VAEDecode',[1640,120],[200,50],[{name:'samples',type:'LATENT',link:l12},{name:'vae',type:'VAE',link:l4}],[{name:'IMAGE',type:'IMAGE',links:[l13],slot_index:0}],[],8),
+    N(10,'SaveImage',[1640,220],[420,620],[{name:'images',type:'IMAGE',link:l13}],[],['provador'],9),
+    N(11,'Note',[420,480],[460,200],[],[],['Provador 3D → foto\n1. No nó "Guia de profundidade", envie o arquivo provador_profundidade.png.\n2. Clique em Run.\n3. Força do corpo editado: 0.5 a 0.75. Mais alto segue o corpo do editor com mais fidelidade; mais baixo deixa a IA mais livre e natural.'],10),
+  ];
+  return JSON.stringify({ last_node_id:11, last_link_id:L, nodes, links, groups:[], config:{}, extra:{ ds:{ scale:0.8, offset:[0,0] } }, version:0.4 }, null, 1);
+}
+let downloadsP = null;
+function getDownloads(){ if (!downloadsP) downloadsP = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(()=>null) : Promise.resolve(null); return downloadsP; }
+async function offer(filename, data){
+  if (APP){ const a=document.createElement('a'); a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data])); a.download=filename; a.click(); return; }
+  const dl = await getDownloads();
+  if (!dl){ toast('Salvar arquivos não está disponível nesta visualização.'); return; }
+  try { await dl.save({ filename, data }); toast('Arquivo entregue: '+filename); }
+  catch(e){ if (e && e.code==='declined') return; if (e && e.code==='rate_limited') toast('Aguarde a confirmação anterior.'); else toast('Não foi possível salvar este arquivo aqui.'); }
+}
+function renderPhoto(){
+  photoView();
+  if (APP) renderGenTop();
+  chips('Enquadramento', ['Corpo inteiro','Três quartos','Retrato'], PHOTO.frame, i=>{ PHOTO.frame=i; });
+  chips('Ângulo da câmera', ['Frente','Levemente de lado','Perfil'], PHOTO.yaw, i=>{ PHOTO.yaw=i; });
+  chips('Pose', ['Em A','Natural'], S.pose, i=>{ S.pose=i; applyMorph(); });
+  if (S.pose){ simpleSlider('armopen','Abertura dos braços', S.armOpen, 'Junto ao corpo', 'Em A', v=>{ S.armOpen=v; schedule(); });
+    simpleSlider('legopen','Abertura das pernas', S.legOpen, 'Juntas', 'Afastadas', v=>{ S.legOpen=v; schedule(); }); }
+  chips('Idade aparente', ['25 anos','30 e poucos','40 e poucos'], S.age, i=>{ S.age=i; });
+  chips('Cenário', ['Estúdio','Apartamento','Praia'], PHOTO.scene, i=>{ PHOTO.scene=i; });
+  const h=document.createElement('div'); h.className='sect'; h.textContent='Detalhes extras (em inglês)'; listEl.append(h);
+  const ex=document.createElement('textarea'); ex.id='extra'; ex.placeholder='ex.: curly hair, choker necklace, holding a coffee cup'; ex.value=PHOTO.extra; ex.style.minHeight='54px';
+  ex.addEventListener('input',()=>{ PHOTO.extra=ex.value; }); listEl.append(ex);
+  simpleSlider('cnstr','Força do corpo editado na foto', (PHOTO.strength-0.3)/0.6, 'IA mais livre', 'Fiel ao editor', v=>{ PHOTO.strength=+(0.3+v*0.6).toFixed(2); });
+  if (APP) return renderGenerator();
+  const go=document.createElement('div'); go.className='bar'; go.style.padding='12px 0 4px';
+  go.innerHTML='<button class="btn on" id="gen">Gerar guias da foto</button>'; listEl.append(go);
+  const out=document.createElement('div'); out.id='guideOut'; listEl.append(out);
+  $('gen').onclick=async()=>{ $('gen').disabled=true; $('gen').textContent='Gerando…';
+    try { lastGuides = await renderGuides(); showGuides(); } finally { const b=$('gen'); if (b){ b.disabled=false; b.textContent='Gerar guias da foto'; } } };
+  if (lastGuides) showGuides();
+  const g=document.createElement('div'); g.className='sect'; g.textContent='Como virar foto no ComfyUI'; listEl.append(g);
+  const ol=document.createElement('ol'); ol.className='steps';
+  ol.innerHTML=`<li>Instale o ComfyUI pelo instalador oficial em <code>comfy.org/download</code>.</li>
+    <li>Baixe o modelo fotográfico <code>RealVisXL_V5.0_fp16.safetensors</code> (huggingface.co/SG161222/RealVisXL_V5.0) para <code>ComfyUI/models/checkpoints</code>.</li>
+    <li>Baixe <code>diffusion_pytorch_model.fp16.safetensors</code> de huggingface.co/diffusers/controlnet-depth-sdxl-1.0, renomeie para <code>controlnet-depth-sdxl-1.0.safetensors</code> e coloque em <code>ComfyUI/models/controlnet</code>.</li>
+    <li>Aqui, toque em Gerar guias e salve a profundidade e o fluxo.</li>
+    <li>Arraste o arquivo do fluxo para a janela do ComfyUI, envie a profundidade no nó de guia e clique em Run.</li>`;
+  listEl.append(ol);
+  const n=document.createElement('p'); n.className='note'; n.textContent='O prompt já sai preenchido dentro do fluxo. Para variar a foto sem mudar o corpo, gere de novo: a semente muda a cada execução.'; listEl.append(n);
+}
+function showGuides(){
+  const out=$('guideOut'); if (!out||!lastGuides) return;
+  const u1=URL.createObjectURL(lastGuides.depth), u2=URL.createObjectURL(lastGuides.beauty);
+  out.innerHTML=`<div class="thumbs"><figure><img src="${u1}" alt="Guia de profundidade"><figcaption>Profundidade (vai para o ControlNet)</figcaption></figure>
+    <figure><img src="${u2}" alt="Prévia do enquadramento"><figcaption>Prévia do enquadramento</figcaption></figure></div>
+    <div class="bar" style="padding:4px 0 8px"><button class="btn" id="svD">Salvar profundidade</button><button class="btn" id="svW">Salvar fluxo do ComfyUI</button><button class="btn" id="svB">Salvar prévia</button></div>
+    <div class="sect">Prompt</div><textarea id="pr" aria-label="Prompt"></textarea>
+    <div class="bar" style="padding:6px 0"><button class="btn" id="cpP">Copiar prompt</button><button class="btn" id="cpN">Copiar negativo</button></div>`;
+  $('pr').value=lastGuides.prompt;
+  $('svD').onclick=()=>offer('provador_profundidade.png', lastGuides.depth);
+  $('svB').onclick=()=>offer('provador_previa.png', lastGuides.beauty);
+  $('svW').onclick=()=>offer('provador_fluxo_comfyui.json', workflow($('pr').value, NEGATIVE));
+  const cp=async(t)=>{ try { await navigator.clipboard.writeText(t); toast('Copiado'); } catch { $('pr').select(); toast('Selecionado. Copie manualmente.'); } };
+  $('cpP').onclick=()=>cp($('pr').value); $('cpN').onclick=()=>cp(NEGATIVE);
+}
+window.__guides = async()=>{ lastGuides = await renderGuides(); return { prompt:lastGuides.prompt, depth:await blobToData(lastGuides.depth), beauty:await blobToData(lastGuides.beauty), wf:workflow(lastGuides.prompt, NEGATIVE) }; };
+function blobToData(b){ return new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); }); }
+
+/* ---------- gerador próprio: fala com o ComfyUI que serve este app ---------- */
+const GEN = { base: location.protocol==='file:' ? 'http://127.0.0.1:8188' : location.origin, models:null, ckpt:'', cn:'', quality:1, count:1, results:[], ws:null, poll:null,
+  clientId: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)) };
+try { GEN.results = JSON.parse(localStorage.getItem('provador3d-fotos')||'[]'); } catch {}
+function saveResults(){ try { localStorage.setItem('provador3d-fotos', JSON.stringify(GEN.results.slice(0,80))); } catch {} }
+const jobs = new Map();
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+function comboList(info, node, field){ try { const v = info[node].input.required[field]; if (Array.isArray(v[0])) return v[0]; if (v[0]==='COMBO') return (v[1]&&v[1].options)||[]; } catch {} return []; }
+async function checkServer(){
+  try {
+    const [a,b] = await Promise.all(['CheckpointLoaderSimple','ControlNetLoader'].map(n=>fetch(GEN.base+'/object_info/'+n).then(r=>{ if(!r.ok) throw 0; return r.json(); })));
+    const ck = comboList(a,'CheckpointLoaderSimple','ckpt_name'), cn = comboList(b,'ControlNetLoader','control_net_name');
+    GEN.models = { ck, cn };
+    if (!ck.includes(GEN.ckpt)) GEN.ckpt = ck.find(n=>/realvis/i.test(n)) || ck.find(n=>/xl/i.test(n)) || ck[0] || '';
+    if (!cn.includes(GEN.cn)) GEN.cn = cn.find(n=>/depth/i.test(n)) || '';
+  } catch { GEN.models = false; }
+}
+function viewURL(r){ return `${GEN.base}/view?filename=${encodeURIComponent(r.f)}&subfolder=${encodeURIComponent(r.sf||'')}&type=output`; }
+function graph(prompt, depthName){
+  const seed = Math.floor(Math.random()*1e15), hi = GEN.quality===1;
+  const g = {
+    '1':{ class_type:'CheckpointLoaderSimple', inputs:{ ckpt_name:GEN.ckpt } },
+    '2':{ class_type:'CLIPTextEncode', inputs:{ text:prompt, clip:['1',1] } },
+    '3':{ class_type:'CLIPTextEncode', inputs:{ text:NEGATIVE, clip:['1',1] } },
+    '9':{ class_type:'EmptyLatentImage', inputs:{ width:GW, height:GH, batch_size:GEN.count } },
+  };
+  let pos=['2',0], neg=['3',0];
+  if (GEN.cn && depthName){
+    g['4']={ class_type:'LoadImage', inputs:{ image:depthName } };
+    g['5']={ class_type:'ControlNetLoader', inputs:{ control_net_name:GEN.cn } };
+    g['6']={ class_type:'ControlNetApplyAdvanced', inputs:{ positive:pos, negative:neg, control_net:['5',0], image:['4',0], strength:PHOTO.strength, start_percent:0, end_percent:0.8 } };
+    pos=['6',0]; neg=['6',1];
+  }
+  g['7']={ class_type:'KSampler', inputs:{ seed, steps:hi?28:20, cfg:4.5, sampler_name:'dpmpp_2m_sde', scheduler:'karras', denoise:1, model:['1',0], positive:pos, negative:neg, latent_image:['9',0] } };
+  let lat=['7',0];
+  if (hi){   // segunda passada em resolução maior: mais detalhe de pele e cabelo
+    g['11']={ class_type:'LatentUpscaleBy', inputs:{ upscale_method:'nearest-exact', scale_by:1.4, samples:lat } };
+    g['12']={ class_type:'KSampler', inputs:{ seed:seed+1, steps:16, cfg:4.5, sampler_name:'dpmpp_2m_sde', scheduler:'karras', denoise:0.42, model:['1',0], positive:pos, negative:neg, latent_image:['11',0] } };
+    lat=['12',0];
+  }
+  g['8']={ class_type:'VAEDecode', inputs:{ samples:lat, vae:['1',2] } };
+  g['10']={ class_type:'SaveImage', inputs:{ filename_prefix:'provador/foto', images:['8',0] } };
+  return { g, seed };
+}
+async function uploadDepth(blob){
+  const fd = new FormData(); fd.append('image', blob, `prof_${Date.now()}.png`); fd.append('type','input'); fd.append('subfolder','provador');
+  const r = await fetch(GEN.base+'/upload/image', { method:'POST', body:fd });
+  if (!r.ok) throw new Error('Não consegui enviar a guia de profundidade ao ComfyUI.');
+  const j = await r.json(); return j.subfolder ? j.subfolder+'/'+j.name : j.name;
+}
+function openWS(){
+  if (GEN.ws && GEN.ws.readyState < 2) return;
+  try { const ws = new WebSocket(GEN.base.replace(/^http/,'ws')+'/ws?clientId='+GEN.clientId); GEN.ws = ws;
+    ws.onmessage = e => { if (typeof e.data!=='string') return; let m; try { m = JSON.parse(e.data); } catch { return; } onWS(m); };
+    ws.onclose = () => { GEN.ws = null; }; } catch {}
+}
+function onWS(m){
+  const d = m.data||{}, job = jobs.get(d.prompt_id); if (!job) return;
+  if (m.type==='execution_start' || m.type==='execution_cached') { job.state='run'; updateGenUI(); }
+  if (m.type==='progress'){ job.state='run'; job.step=d.value; job.max=d.max; job.node=String(d.node||''); updateGenUI(); }
+  if (m.type==='executing' && d.node){ job.state='run'; job.node=String(d.node); updateGenUI(); }
+  if (m.type==='executing' && d.node===null) finishJob(d.prompt_id);
+  if (m.type==='execution_success') finishJob(d.prompt_id);
+  if (m.type==='execution_error'){ job.error = d.exception_message ? 'Erro no ComfyUI: '+String(d.exception_message).slice(0,160) : 'Erro na geração.'; finishJob(d.prompt_id); }
+}
+function startPoll(){
+  if (GEN.poll) return;
+  GEN.poll = setInterval(async()=>{
+    if (!jobs.size){ clearInterval(GEN.poll); GEN.poll=null; return; }
+    for (const id of [...jobs.keys()]){ try { const h = await fetch(GEN.base+'/history/'+id).then(r=>r.json()); if (h[id]) finishJob(id); } catch {} }
+  }, 2500);
+}
+async function finishJob(id){
+  const job = jobs.get(id); if (!job || job.done) return; job.done = true;
+  let imgs = [];
+  for (let i=0;i<12;i++){
+    try { const h = await fetch(GEN.base+'/history/'+id).then(r=>r.json()); const e = h[id];
+      if (e){ for (const k in (e.outputs||{})) for (const im of (e.outputs[k].images||[])) if (im.type==='output') imgs.push(im);
+        if (e.status && e.status.status_str==='error' && !job.error) job.error = 'O ComfyUI informou um erro. Veja a janela dele para detalhes.'; break; } } catch {}
+    await sleep(500);
+  }
+  jobs.delete(id);
+  if (!imgs.length && !job.error) job.error = 'A geração terminou sem imagem.';
+  imgs.reverse().forEach(im => GEN.results.unshift({ f:im.filename, sf:im.subfolder, seed:job.seed, t:Date.now() }));
+  saveResults();
+  if (job.error) toast(job.error); else { toast(imgs.length>1 ? `${imgs.length} fotos prontas` : 'Foto pronta'); openLightbox(0); }
+  updateGenUI(true);
+}
+function explainError(j){
+  const e = j.error||{}; let msg = e.message || 'O ComfyUI recusou o pedido.';
+  for (const k in (j.node_errors||{})){ const x = (j.node_errors[k].errors||[])[0]; if (x){ msg += ': ' + (x.details || x.message); break; } }
+  return msg;
+}
+async function generate(){
+  if (!GEN.models || !GEN.ckpt){ toast('Falta o modelo de foto no ComfyUI. Veja o aviso acima.'); return; }
+  const btn = $('genBtn'); if (btn){ btn.disabled = true; btn.textContent = 'Preparando…'; }
+  try {
+    lastGuides = await renderGuides();
+    const depthName = GEN.cn ? await uploadDepth(lastGuides.depth) : '';
+    const ta = $('pr'); const prompt = (ta && ta.dataset.edited==='1') ? ta.value : describe();
+    const { g, seed } = graph(prompt, depthName);
+    openWS();
+    const r = await fetch(GEN.base+'/prompt', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ prompt:g, client_id:GEN.clientId }) });
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok || !j.prompt_id) throw new Error(explainError(j));
+    jobs.set(j.prompt_id, { seed, state:'queue', step:0, max:0, node:'' }); startPoll();
+  } catch(e){ toast(e && e.message ? e.message : 'Não consegui falar com o ComfyUI.'); }
+  updateGenUI();
+}
+function updateGenUI(galleryToo){
+  const btn = $('genBtn'), bar = $('genBar'), lab = $('genLab');
+  if (btn){ btn.disabled = false; btn.textContent = jobs.size ? 'Gerar outra (entra na fila)' : 'Gerar foto'; }
+  if (bar && lab){
+    const job = [...jobs.values()][0];
+    if (!job){ bar.parentElement.hidden = true; }
+    else { bar.parentElement.hidden = false;
+      const two = GEN.quality===1, stage = job.node==='12' ? 2 : 1;
+      const frac = job.max ? job.step/job.max : 0, total = two ? (stage===1 ? frac*0.62 : 0.62+frac*0.38) : frac;
+      bar.style.width = Math.round(total*100)+'%';
+      lab.textContent = job.state==='queue' ? 'Na fila do ComfyUI…' : !job.max ? 'Carregando o modelo (a primeira vez demora mais)…'
+        : `${two ? `Etapa ${stage} de 2 · ` : ''}passo ${job.step} de ${job.max}` + (jobs.size>1 ? ` · mais ${jobs.size-1} na fila` : ''); }
+  }
+  if (galleryToo) renderGallery();
+}
+function renderGallery(){
+  const gal = $('gal'); if (!gal) return;
+  if (!GEN.results.length){ gal.innerHTML = ''; return; }
+  gal.innerHTML = '<div class="gal">' + GEN.results.slice(0,24).map((r,i)=>`<button class="gi" data-i="${i}" aria-label="Abrir foto ${i+1}"><img loading="lazy" src="${viewURL(r)}" alt=""></button>`).join('') + '</div>';
+  gal.querySelectorAll('.gi').forEach(b => b.onclick = () => openLightbox(+b.dataset.i));
+  gal.querySelectorAll('img').forEach(im => im.onerror = () => { im.parentElement.classList.add('gone'); });
+}
+let lbIndex = 0;
+function openLightbox(i){
+  if (!GEN.results.length) return; lbIndex = Math.max(0, Math.min(i, GEN.results.length-1));
+  const r = GEN.results[lbIndex], lb = $('lb');
+  $('lbImg').src = viewURL(r); $('lbDl').href = viewURL(r); $('lbDl').setAttribute('download', r.f);
+  $('lbInfo').textContent = `${lbIndex+1} de ${GEN.results.length} · semente ${r.seed}`;
+  $('lbPrev').disabled = lbIndex===0; $('lbNext').disabled = lbIndex>=GEN.results.length-1;
+  lb.hidden = false; $('lbClose').focus();
+}
+function closeLightbox(){ $('lb').hidden = true; }
+$('lbClose').onclick = closeLightbox; $('lbPrev').onclick = () => openLightbox(lbIndex-1); $('lbNext').onclick = () => openLightbox(lbIndex+1);
+$('lbAgain').onclick = () => { closeLightbox(); generate(); };
+document.addEventListener('keydown', e => { if ($('lb').hidden) return; if (e.key==='Escape') closeLightbox(); if (e.key==='ArrowLeft') openLightbox(lbIndex-1); if (e.key==='ArrowRight') openLightbox(lbIndex+1); });
+function serverBlock(){
+  const box = document.createElement('div'); box.className = 'srv'; box.id = 'srv'; listEl.append(box);
+  const paint = () => {
+    const M = GEN.models;
+    if (M===null){ box.innerHTML = '<span class="dot"></span> Procurando o ComfyUI…'; return; }
+    if (M===false){ box.className='srv bad'; box.innerHTML = `<b>Não encontrei o ComfyUI.</b> Abra este app pelo endereço do ComfyUI terminado em <code>/provador</code>, com o ComfyUI aberto no PC.`; return; }
+    const sel = (id, list, cur) => `<select id="${id}">${list.map(n=>`<option ${n===cur?'selected':''}>${n.replace(/[<>&]/g,'')}</option>`).join('')}</select>`;
+    let html = '';
+    if (!M.ck.length){ box.className='srv bad'; html += `<b>Falta o modelo de foto.</b> Baixe <code>RealVisXL_V5.0_fp16.safetensors</code> (huggingface.co/SG161222/RealVisXL_V5.0) para <code>ComfyUI/models/checkpoints</code> e toque em Verificar de novo.`; }
+    else { box.className = GEN.cn ? 'srv ok' : 'srv warn';
+      html += `<label for="selCk">Modelo de foto</label>${sel('selCk', M.ck, GEN.ckpt)}`;
+      if (M.cn.length) html += `<label for="selCn">Guia do corpo (ControlNet)</label>${sel('selCn', ['(sem guia)', ...M.cn], GEN.cn||'(sem guia)')}`;
+      if (!GEN.cn) html += `<p><b>Sem guia de corpo, a IA desenha um corpo do jeito dela.</b> Baixe <code>diffusion_pytorch_model.fp16.safetensors</code> de huggingface.co/diffusers/controlnet-depth-sdxl-1.0, renomeie para <code>controlnet-depth-sdxl-1.0.safetensors</code> e coloque em <code>ComfyUI/models/controlnet</code>.</p>`; }
+    html += '<button class="btn" id="recheck">Verificar de novo</button>';
+    box.innerHTML = html;
+    const sc = $('selCk'), sn = $('selCn');
+    if (sc) sc.onchange = () => { GEN.ckpt = sc.value; };
+    if (sn) sn.onchange = () => { GEN.cn = sn.value==='(sem guia)' ? '' : sn.value; paint(); };
+    $('recheck').onclick = async () => { GEN.models = null; paint(); await checkServer(); paint(); };
+  };
+  paint(); if (GEN.models===null) checkServer().then(paint);
+}
+function renderGenTop(){
+  serverBlock();
+  const go=document.createElement('div'); go.className='gen';
+  go.innerHTML='<button class="btn big" id="genBtn">Gerar foto</button><div class="prog" hidden><div class="track"><div class="fill" id="genBar"></div></div><span id="genLab"></span></div>';
+  listEl.append(go); $('genBtn').onclick = generate;
+  const gal=document.createElement('div'); gal.id='gal'; listEl.append(gal);
+}
+function renderGenerator(){
+  chips('Qualidade', ['Rápida','Alta (2 etapas)'], GEN.quality, i=>{ GEN.quality=i; });
+  chips('Fotos por vez', ['1','2','4'], [1,2,4].indexOf(GEN.count), i=>{ GEN.count=[1,2,4][i]; });
+  const h=document.createElement('div'); h.className='sect'; h.textContent='Descrição usada pela IA (inglês)'; listEl.append(h);
+  const ta=document.createElement('textarea'); ta.id='pr'; ta.setAttribute('aria-label','Descrição da foto'); ta.style.minHeight='96px';
+  ta.value = describe(); ta.addEventListener('input',()=>{ ta.dataset.edited='1'; }); listEl.append(ta);
+  const rb=document.createElement('div'); rb.className='bar'; rb.style.padding='6px 0 0';
+  rb.innerHTML='<button class="btn" id="prAuto">Refazer a partir dos ajustes</button>'; listEl.append(rb);
+  $('prAuto').onclick=()=>{ ta.value = describe(); delete ta.dataset.edited; };
+  const n=document.createElement('p'); n.className='note'; n.textContent='Ajuste o corpo nas outras abas e volte aqui para gerar. Cada foto fica salva em ComfyUI/output/provador no seu PC.'; listEl.append(n);
+  updateGenUI(true);
+}
+
+const LS='provador3d-slots';
+function readSlots(){ try { return JSON.parse(localStorage.getItem(LS)) || [null,null,null]; } catch { return [null,null,null]; } }
+function writeSlots(s){ try { localStorage.setItem(LS, JSON.stringify(s)); return true; } catch { return false; } }
+function code(){ return btoa(unescape(encodeURIComponent(JSON.stringify(S)))); }
+function loadState(o){ const f=freshState(); S={ ...f, ...o, m:{...f.m,...(o.m||{}), gender:0}, p:{...f.p,...(o.p||{})} }; applyColors(); applyMorph(); renderTab(); }
+function renderSaves(){
+  const slots=readSlots();
+  const h=document.createElement('div'); h.className='sect'; h.textContent='Espaços neste navegador'; listEl.append(h);
+  const g=document.createElement('div'); g.className='slots';
+  slots.forEach((s,i)=>{ const d=document.createElement('div'); d.className='slot';
+    d.innerHTML=`<button class="btn" id="sv${i}">Salvar ${i+1}</button><button class="btn" id="ld${i}" ${s?'':'disabled'}>Carregar ${i+1}</button><small>${s? new Date(s.t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : 'vazio'}</small>`;
+    g.append(d); });
+  listEl.append(g);
+  slots.forEach((s,i)=>{ $('sv'+i).onclick=()=>{ const sl=readSlots(); sl[i]={t:Date.now(), s:S}; if (writeSlots(sl)){ toast('Salvo no espaço '+(i+1)); renderTab(); } else toast('Este navegador bloqueou o armazenamento. Use o código abaixo.'); };
+    $('ld'+i).onclick=()=>{ const sl=readSlots(); if (sl[i]){ loadState(sl[i].s); toast('Carregado'); } }; });
+  const h2=document.createElement('div'); h2.className='sect'; h2.textContent='Código do personagem'; listEl.append(h2);
+  const ta=document.createElement('textarea'); ta.id='codebox'; ta.value=code(); ta.setAttribute('aria-label','Código do personagem'); listEl.append(ta);
+  const b=document.createElement('div'); b.className='bar'; b.style.padding='8px 0';
+  b.innerHTML='<button class="btn" id="cpy">Copiar código</button><button class="btn" id="imp">Aplicar código colado</button>'; listEl.append(b);
+  $('cpy').onclick=async()=>{ ta.value=code(); try { await navigator.clipboard.writeText(ta.value); toast('Código copiado'); } catch { ta.select(); toast('Selecionado. Copie manualmente.'); } };
+  $('imp').onclick=()=>{ try { loadState(JSON.parse(decodeURIComponent(escape(atob(ta.value.trim()))))); toast('Personagem aplicado'); } catch { toast('Código inválido. Cole o texto completo.'); } };
+  const n=document.createElement('p'); n.className='note'; n.textContent='O código guarda todos os ajustes. Serve para levar o personagem para outro aparelho ou, depois, para o protótipo no Unreal.'; listEl.append(n);
+}
+$('pReset').onclick=()=>{ const keep={skin:S.skin,hair:S.hair,cloth:S.cloth,eye:S.eye,lip:S.lip,makeup:S.makeup,hairLen:S.hairLen,outfit:S.outfit,ear:S.ear}; S={...freshState(),...keep}; applyMorph(); renderTab(); };
+$('pRand').onclick=()=>{ const r=(a,b)=>a+Math.random()*(b-a);
+  for (const k of ['weight','muscle','height','prop','cup','firm']) S.m[k]=r(0.15,0.9);
+  for (const k of PAIRS) S.p[k]= (PAIR_DEF[k]||0) + (Math.random()<0.6 ? r(-0.45,0.45) : 0);
+  const pick=a=>Math.floor(Math.random()*a.length);
+  S.skin=pick(SKINS); S.hair=pick(HAIRS); S.eye=pick(IRIS); S.lip=pick(LIPS); S.hairLen=r(0.3,1); S.makeup=r(0.2,0.9); applyColors(); applyMorph(); renderTab(); };
+$('pExtreme').onclick=()=>{ extreme=!extreme; $('pExtreme').classList.toggle('on',extreme); $('pExtreme').setAttribute('aria-pressed',extreme);
+  if (!extreme){ for (const k in S.m) if (k!=='gender') S.m[k]=Math.min(1,Math.max(0,S.m[k])); for (const k in S.p) S.p[k]=Math.min(1,Math.max(-1,S.p[k])); applyMorph(); }
+  renderTab(); };
+
+applyColors(); applyMorph(); renderTab(); resize();
+$('loading').hidden = true;
+window.__apply = o => loadState(o);
+window.__ready = true;
+loop();
+</script>
+
+</body></html>
