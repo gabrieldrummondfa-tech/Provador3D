@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="studio">#121315</color>
+    <color name="panel">#1A1B1E</color>
+    <color name="raise">#24262A</color>
+    <color name="ink">#ECE9E4</color>
+    <color name="muted">#9A978F</color>
+    <color name="tape">#E8C35A</color>
+    <color name="tape_ink">#1B1708</color>
+</resources>

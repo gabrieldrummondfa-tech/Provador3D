@@ -1,0 +1,32 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'br.drummond.provador3d'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'br.drummond.provador3d'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.debug }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    // o editor offline vem da pasta app/ da extensão (mesmo código do PC)
+    sourceSets { main { assets.srcDirs = ['src/main/assets', "$rootDir/build/offline-assets"] } }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
+
+tasks.register('copyOfflineApp', Copy) {
+    from "$rootDir/../app"
+    into "$rootDir/build/offline-assets/offline"
+}
+preBuild.dependsOn copyOfflineApp
