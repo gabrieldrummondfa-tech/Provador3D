@@ -2,52 +2,5 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/studio">
-
-    <WebView android:id="@+id/web" android:layout_width="match_parent" android:layout_height="match_parent"
-        android:visibility="gone" />
-
-    <ScrollView android:id="@+id/connect" android:layout_width="match_parent" android:layout_height="match_parent"
-        android:fillViewport="true">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:gravity="center_vertical"
-            android:paddingLeft="28dp" android:paddingRight="28dp" android:paddingTop="48dp" android:paddingBottom="32dp">
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="Provador 3D" android:textColor="@color/ink" android:textSize="30sp" android:textStyle="bold" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="2dp" android:text="EDITOR + GERADOR" android:letterSpacing="0.14"
-                android:textColor="@color/muted" android:textSize="12sp" />
-
-            <View android:layout_width="64dp" android:layout_height="6dp" android:layout_marginTop="20dp"
-                android:background="@color/tape" />
-
-            <ProgressBar android:id="@+id/spin" style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="28dp" android:indeterminate="true" android:indeterminateTint="@color/tape" />
-
-            <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="12dp" android:text="Procurando o PC no Wi-Fi…"
-                android:textColor="@color/ink" android:textSize="17sp" />
-            <TextView android:id="@+id/hint" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" android:lineSpacingMultiplier="1.25"
-                android:text="O ComfyUI precisa estar aberto no PC, no mesmo Wi-Fi, com o acesso pela rede ligado (Configurações → Server Configuration → Listen Address 0.0.0.0)."
-                android:textColor="@color/muted" android:textSize="14sp" />
-
-            <Button android:id="@+id/retry" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="28dp" android:text="Procurar de novo" android:textAllCaps="false"
-                android:backgroundTint="@color/tape" android:textColor="@color/tape_ink" android:textSize="16sp" />
-
-            <EditText android:id="@+id/addr" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="16dp" android:hint="Ou digite: 192.168.0.15:8000" android:inputType="textUri"
-                android:singleLine="true" android:imeOptions="actionGo"
-                android:textColor="@color/ink" android:textColorHint="@color/muted" android:backgroundTint="@color/muted" />
-            <Button android:id="@+id/connectAddr" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" android:text="Conectar neste endereço" android:textAllCaps="false"
-                android:backgroundTint="@color/raise" android:textColor="@color/ink" />
-
-            <Button android:id="@+id/offline" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="20dp" android:text="Usar só o editor (sem PC)" android:textAllCaps="false"
-                android:backgroundTint="@color/panel" android:textColor="@color/ink" />
-        </LinearLayout>
-    </ScrollView>
+    <WebView android:id="@+id/web" android:layout_width="match_parent" android:layout_height="match_parent" />
 </FrameLayout>

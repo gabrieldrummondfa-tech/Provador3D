@@ -7,11 +7,22 @@ android {
         applicationId 'br.drummond.provador3d'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+    // Chave fixa no repositório: app de uso pessoal, instalado por fora da loja.
+    // Assim cada versão nova instala por cima da anterior, venha de onde vier a compilação.
+    signingConfigs {
+        provador {
+            storeFile file("$rootDir/provador.keystore")
+            storePassword 'provador3d'
+            keyAlias 'provador'
+            keyPassword 'provador3d'
+        }
     }
     buildTypes {
-        release { minifyEnabled false; signingConfig signingConfigs.debug }
+        debug { signingConfig signingConfigs.provador }
+        release { minifyEnabled false; signingConfig signingConfigs.provador }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

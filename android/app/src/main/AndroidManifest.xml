@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <!-- para abrir o Local Dream (motor de imagens) a partir do app -->
+    <queries>
+        <package android:name="io.github.xororz.localdream" />
+    </queries>
+
     <application
         android:label="Provador 3D"
         android:icon="@mipmap/ic_launcher"

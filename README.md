@@ -17,6 +17,16 @@ Instalação (3 passos)
      Na aba Foto, clique em "Baixar modelos automaticamente". O app baixa os dois modelos
      (cerca de 9,5 GB) para as pastas certas. Se a internet cair, clique de novo: continua de onde parou.
 
+NO CELULAR (sem PC): app Android
+  1) Baixe o Provador3D.apk em github.com/gabrieldrummondfa-tech/Provador3D/releases (pelo celular)
+     e instale. O Android vai pedir para permitir "instalar apps desconhecidos".
+  2) Instale o Local Dream (github.com/xororz/local-dream/releases), o motor que gera a foto
+     no próprio celular. Nele, baixe um modelo realista e carregue (abra a tela de gerar).
+     SDXL roda no chip de IA dos Snapdragon 8 Gen 3 em diante; SD 1.5 roda em aparelhos mais simples.
+  3) Abra o Provador 3D, ajuste a personagem e, na aba Foto, toque em Gerar foto.
+     As fotos vão para a galeria, em Imagens/Provador3D.
+  O Local Dream é de uso pessoal e não comercial (licença CC BY-NC 4.0).
+
 Atualizar
   Manager > Update no Provador3D, ou  git pull  dentro da pasta da extensão.
 

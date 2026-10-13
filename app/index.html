@@ -820,10 +820,10 @@ const depthMat = new THREE.ShaderMaterial({ uniforms:depthU, vertexShader:depthV
 const depthHairMat = new THREE.ShaderMaterial({ uniforms:depthU, vertexShader:depthVS, fragmentShader:depthFS, side:THREE.DoubleSide, defines:{ HAIR:1 } });
 const hideMat = new THREE.MeshBasicMaterial({ visible:false });
 function snap(){ return new Promise(res=>renderer.domElement.toBlob(b=>res(b),'image/png')); }
-async function renderGuides(){
+async function renderGuides(W=GW, H=GH){
   const prevPR = renderer.getPixelRatio(), prevSize = renderer.getSize(new THREE.Vector2()), prevAspect = camera.aspect;
-  renderer.setPixelRatio(1); renderer.setSize(GW, GH, false); composer.setPixelRatio(1); composer.setSize(GW, GH);
-  camera.aspect = GW/GH; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false); composer.setPixelRatio(1); composer.setSize(W, H);
+  camera.aspect = W/H; camera.updateProjectionMatrix();
   disc.visible=false;
   const prevClear = renderer.getClearColor(new THREE.Color()), prevAlpha = renderer.getClearAlpha();
   renderer.setClearColor(0x1a1b1e, 1);
@@ -847,6 +847,7 @@ async function renderGuides(){
   return { beauty, depth, prompt:describe(), negative:NEGATIVE };
 }
 const APP = true;
+const PHONE = !!(window.ProvadorNative && window.ProvadorNative.engine && window.ProvadorNative.engine()==='phone');
 const NEGATIVE = 'cartoon, anime, illustration, painting, 3d render, cgi, doll, mannequin, plastic skin, airbrushed, deformed, bad anatomy, extra limbs, extra fingers, mutated hands, blurry, lowres, jpeg artifacts, watermark, text, logo, nude, nsfw, child, teen, underage';
 function describe(){
   const m=S.m, p=S.p, w=m.weight, parts=[];
@@ -974,7 +975,7 @@ async function checkServer(){
     if (!cn.includes(GEN.cn)) GEN.cn = cn.find(n=>/depth/i.test(n)) || '';
   } catch { GEN.models = false; }
 }
-function viewURL(r){ return `${GEN.base}/view?filename=${encodeURIComponent(r.f)}&subfolder=${encodeURIComponent(r.sf||'')}&type=output`; }
+function viewURL(r){ if (r.url) return r.url; return `${GEN.base}/view?filename=${encodeURIComponent(r.f)}&subfolder=${encodeURIComponent(r.sf||'')}&type=output`; }
 function graph(prompt, depthName){
   const seed = Math.floor(Math.random()*1e15), hi = GEN.quality===1;
   const g = {
@@ -1051,6 +1052,7 @@ function explainError(j){
   return msg;
 }
 async function generate(){
+  if (PHONE) return generatePhone();
   if (!GEN.models || !GEN.ckpt){ toast('Falta o modelo de foto no ComfyUI. Veja o aviso acima.'); return; }
   const btn = $('genBtn'); if (btn){ btn.disabled = true; btn.textContent = 'Preparando…'; }
   try {
@@ -1101,6 +1103,7 @@ function closeLightbox(){ $('lb').hidden = true; }
 $('lbClose').onclick = closeLightbox; $('lbPrev').onclick = () => openLightbox(lbIndex-1); $('lbNext').onclick = () => openLightbox(lbIndex+1);
 $('lbAgain').onclick = () => { closeLightbox(); generate(); };
 $('lbDl').addEventListener('click', e => { if (!window.ProvadorNative) return; e.preventDefault(); const r = GEN.results[lbIndex]; if (!r) return;
+  if (r.url){ toast('Essa foto já está na galeria, em Imagens/Provador3D'); return; }
   window.ProvadorNative.save(new URL(viewURL(r), location.href).href, r.f); toast('Salvando na galeria…'); });
 window.__back = () => { if (!$('lb').hidden){ closeLightbox(); return true; } return false; };
 document.addEventListener('keydown', e => { if ($('lb').hidden) return; if (e.key==='Escape') closeLightbox(); if (e.key==='ArrowLeft') openLightbox(lbIndex-1); if (e.key==='ArrowRight') openLightbox(lbIndex+1); });
@@ -1152,8 +1155,47 @@ function watchDownload(paint){
   };
   tick(); DL.timer = setInterval(tick, 1500);
 }
+/* ---------- gerador no próprio celular: motor do Local Dream (servidor local 127.0.0.1:8081) ---------- */
+const PH = { ok:null, busy:false, step:0, total:0 };
+function nativeCall(fn, ...args){ return new Promise(res => { const cb = '__cb' + Math.random().toString(36).slice(2); window[cb] = v => { delete window[cb]; res(v); }; window.ProvadorNative[fn](...args, cb); }); }
+function blobToB64(b){ return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); }); }
+function phoneBlock(){
+  const box = document.createElement('div'); box.className = 'srv'; box.id = 'srv'; listEl.append(box);
+  const paint = () => {
+    if (PH.ok===null){ box.className='srv'; box.innerHTML = 'Procurando o motor de imagens no celular…'; return; }
+    if (PH.ok){ box.className='srv ok'; box.innerHTML = '<b>Motor pronto no celular.</b><p>As fotos são geradas aqui mesmo, sem internet, pelo modelo carregado no Local Dream.</p><button class="btn" id="phRe">Verificar de novo</button>'; }
+    else { box.className='srv warn'; box.innerHTML = `<b>O motor de imagens não está ligado.</b>
+      <p>1. Abra o Local Dream, escolha um modelo realista e carregue (toque nele até abrir a tela de gerar).<br>2. Volte para cá e toque em Verificar de novo.</p>
+      <div class="bar" style="padding:0"><button class="btn big" id="phOpen">Abrir o Local Dream</button><button class="btn" id="phRe">Verificar de novo</button></div>`; }
+    const re = $('phRe'); if (re) re.onclick = check;
+    const op = $('phOpen'); if (op) op.onclick = () => window.ProvadorNative.openEngine();
+  };
+  const check = async () => { PH.ok = null; paint(); PH.ok = !!(await nativeCall('health')); paint(); };
+  paint(); check();
+}
+window.__phoneProgress = (step, total) => { PH.step = step; PH.total = total; const bar=$('genBar'), lab=$('genLab');
+  if (bar && lab){ bar.parentElement.parentElement.hidden = false; bar.style.width = (total ? Math.round(step/total*100) : 3)+'%'; lab.textContent = total ? `Gerando no celular · passo ${step} de ${total}` : 'Carregando o modelo…'; } };
+window.__phoneDone = (url, seed) => { PH.busy = false; GEN.results.unshift({ url, seed, t:Date.now() }); saveResults(); toast('Foto pronta e salva na galeria'); phoneUI(); renderGallery(); openLightbox(0); };
+window.__phoneError = msg => { PH.busy = false; phoneUI(); toast(msg && String(msg).length < 200 ? String(msg) : 'A geração falhou no motor do celular.'); };
+function phoneUI(){ const btn=$('genBtn'), bar=$('genBar'); if (btn){ btn.disabled = PH.busy; btn.textContent = PH.busy ? 'Gerando…' : 'Gerar foto'; } if (bar && !PH.busy) bar.parentElement.parentElement.hidden = true; }
+async function generatePhone(){
+  if (PH.busy) return;
+  const alive = await nativeCall('health');
+  if (!alive){ PH.ok = false; toast('Abra o Local Dream e carregue um modelo primeiro.'); renderTab(); return; }
+  PH.busy = true; phoneUI(); window.__phoneProgress(0, 0);
+  try {
+    const g = await renderGuides(1024, 1024); lastGuides = g;
+    const ta = $('pr'); const prompt = (ta && ta.dataset.edited==='1') ? ta.value : describe();
+    const fidelity = (PHOTO.strength - 0.3) / 0.6;               // 0 = IA livre, 1 = fiel ao editor
+    const req = { prompt, negative_prompt: NEGATIVE, steps: GEN.quality===1 ? 30 : 20, cfg: 6.5,
+      denoise_strength: +(0.78 - 0.33*fidelity).toFixed(2), width: 512, height: 512,
+      seed: Math.floor(Math.random()*2147483647), output_format: 'jpeg', image: await blobToB64(g.beauty) };
+    window.ProvadorNative.generate(JSON.stringify(req));
+  } catch(e){ window.__phoneError(e && e.message); }
+}
+
 function renderGenTop(){
-  serverBlock();
+  if (PHONE) phoneBlock(); else serverBlock();
   const go=document.createElement('div'); go.className='gen';
   go.innerHTML='<button class="btn big" id="genBtn">Gerar foto</button><div class="prog" hidden><div class="track"><div class="fill" id="genBar"></div></div><span id="genLab"></span></div>';
   listEl.append(go); $('genBtn').onclick = generate;
@@ -1161,14 +1203,14 @@ function renderGenTop(){
 }
 function renderGenerator(){
   chips('Qualidade', ['Rápida','Alta (2 etapas)'], GEN.quality, i=>{ GEN.quality=i; });
-  chips('Fotos por vez', ['1','2','4'], [1,2,4].indexOf(GEN.count), i=>{ GEN.count=[1,2,4][i]; });
+  if (!PHONE) chips('Fotos por vez', ['1','2','4'], [1,2,4].indexOf(GEN.count), i=>{ GEN.count=[1,2,4][i]; });
   const h=document.createElement('div'); h.className='sect'; h.textContent='Descrição usada pela IA (inglês)'; listEl.append(h);
   const ta=document.createElement('textarea'); ta.id='pr'; ta.setAttribute('aria-label','Descrição da foto'); ta.style.minHeight='96px';
   ta.value = describe(); ta.addEventListener('input',()=>{ ta.dataset.edited='1'; }); listEl.append(ta);
   const rb=document.createElement('div'); rb.className='bar'; rb.style.padding='6px 0 0';
   rb.innerHTML='<button class="btn" id="prAuto">Refazer a partir dos ajustes</button>'; listEl.append(rb);
   $('prAuto').onclick=()=>{ ta.value = describe(); delete ta.dataset.edited; };
-  const n=document.createElement('p'); n.className='note'; n.textContent='Ajuste o corpo nas outras abas e volte aqui para gerar. Cada foto fica salva em ComfyUI/output/provador no seu PC.'; listEl.append(n);
+  const n=document.createElement('p'); n.className='note'; n.textContent= PHONE ? 'Ajuste o corpo nas outras abas e volte aqui para gerar. Cada foto vai para a galeria do celular, em Imagens/Provador3D.' : 'Ajuste o corpo nas outras abas e volte aqui para gerar. Cada foto fica salva em ComfyUI/output/provador no seu PC.'; listEl.append(n);
   updateGenUI(true);
 }
 

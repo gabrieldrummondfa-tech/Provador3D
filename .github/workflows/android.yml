@@ -1,0 +1,37 @@
+name: App Android
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'app/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Compilar o APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../Provador3D.apk
+      - name: Publicar em Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Provador 3D 1.0.${{ github.run_number }}
+          body: |
+            Baixe **Provador3D.apk** pelo celular e instale (permita "instalar apps desconhecidos" quando o Android pedir).
+            Para gerar fotos no celular, instale também o Local Dream e carregue um modelo realista nele.
+          files: Provador3D.apk
+          make_latest: true
