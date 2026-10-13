@@ -1100,13 +1100,19 @@ function openLightbox(i){
 function closeLightbox(){ $('lb').hidden = true; }
 $('lbClose').onclick = closeLightbox; $('lbPrev').onclick = () => openLightbox(lbIndex-1); $('lbNext').onclick = () => openLightbox(lbIndex+1);
 $('lbAgain').onclick = () => { closeLightbox(); generate(); };
+$('lbDl').addEventListener('click', e => { if (!window.ProvadorNative) return; e.preventDefault(); const r = GEN.results[lbIndex]; if (!r) return;
+  window.ProvadorNative.save(new URL(viewURL(r), location.href).href, r.f); toast('Salvando na galeria…'); });
+window.__back = () => { if (!$('lb').hidden){ closeLightbox(); return true; } return false; };
 document.addEventListener('keydown', e => { if ($('lb').hidden) return; if (e.key==='Escape') closeLightbox(); if (e.key==='ArrowLeft') openLightbox(lbIndex-1); if (e.key==='ArrowRight') openLightbox(lbIndex+1); });
 function serverBlock(){
   const box = document.createElement('div'); box.className = 'srv'; box.id = 'srv'; listEl.append(box);
   const paint = () => {
     const M = GEN.models;
     if (M===null){ box.innerHTML = '<span class="dot"></span> Procurando o ComfyUI…'; return; }
-    if (M===false){ box.className='srv bad'; box.innerHTML = `<b>Não encontrei o ComfyUI.</b> Abra este app pelo endereço do ComfyUI terminado em <code>/provador</code>, com o ComfyUI aberto no PC.`; return; }
+    if (M===false){ box.className='srv bad';
+      if (window.ProvadorNative){ box.innerHTML = `<b>Sem conexão com o PC.</b><p>O editor funciona normalmente. Para gerar fotos, deixe o ComfyUI aberto no PC, no mesmo Wi-Fi, com acesso pela rede ligado.</p><button class="btn big" id="nativeReconnect">Procurar o PC</button>`; $('nativeReconnect').onclick = () => window.ProvadorNative.reconnect(); }
+      else box.innerHTML = `<b>Não encontrei o ComfyUI.</b> Abra este app pelo endereço do ComfyUI terminado em <code>/provador</code>, com o ComfyUI aberto no PC.`;
+      return; }
     const sel = (id, list, cur) => `<select id="${id}">${list.map(n=>`<option ${n===cur?'selected':''}>${n.replace(/[<>&]/g,'')}</option>`).join('')}</select>`;
     let html = '';
     const needCk = !M.ck.length, needCn = !GEN.cn && !M.cn.some(n=>/depth/i.test(n));
